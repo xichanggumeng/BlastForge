@@ -57,26 +57,38 @@
 
 ## Phase 3：Agent Runtime
 
-- [ ] DeepSeek Provider Adapter（仅服务端）
-- [ ] Agent Registry
-- [ ] Tool Registry
-- [ ] Workflow Engine
-- [ ] Trace Recorder
-- [ ] React Flow Workflow 视图
-- [ ] 演示脚本自动播放（基于 Session 2 `PresentationScriptBar`）
+- [x] DeepSeek Provider Adapter（OpenAI-compatible，仅服务端 `server-only`）
+- [x] Agent Registry（8 个 Agent，全部声明 id/name/description/model/mode/inputSchema/outputSchema/tools/maxSteps/timeoutMs/promptVersion/requiresApproval）
+- [x] Tool Registry（8 个 Tool，全部 Zod 校验；复用 Session 3 纯函数；记录耗时与状态）
+- [x] Prompt Registry（集中版本化；4 条硬约束；不暴露到前端）
+- [x] Workflow Engine（10 Step Spec + 状态机 + 快照重建 + 阻塞识别）
+- [x] WorkflowEventBus + RunRepository（事件订阅 / 持久化 / 取消标记）
+- [x] Orchestrator / Supervisor（决策 Replay vs 真实调用；emit 全套事件）
+- [x] Trace Recorder + FrontendTraceSummary（安全摘要，不暴露 Prompt / Key）
+- [x] Replay / Degradation（standard / complex / high-risk 三套预录制）
+- [x] SSE 流式接口 `/api/agent/runs/stream` + `/api/agent/runs/[id]` + `/api/agent/runs/[id]/convert`
+- [x] React Flow Workflow 视图（节点 / 边 / 状态 / 详情面板 / Mobile Bottom Sheet）
+- [x] Agent 工作台 `/agents` 完整页面（Agent 池 / Tool 池 / Schema 摘要 / 最近 Run）
+- [x] Planner 接入（`useAgentWorkflow` Hook + 自动 fallback 到 Session 3 Demo Planner）
+- [x] 测试 Vitest 83 条（Agent Schema / Tool I/O / Workflow / Safety 阻断 / Replay 顺序 / 流恢复 / Provider 降级）
+- [x] `npm run lint` / `typecheck` / `test` / `build` 全部通过
 
-## Phase 4：RAG 与复核
+## Phase 4：知识库 / 审批 / 报告
 
-- [ ] 知识库（pgvector）
-- [ ] 知识引用面板
-- [ ] Safety Reviewer
-- [ ] 人工确认节点
+- [ ] 知识库 + RAG 真实接入（pgvector / Elasticsearch 替换 `DEMO_KNOWLEDGE`）
+- [ ] 知识引用面板（带文档 ID + 页码 + 章节 + 高亮命中片段）
+- [ ] Safety Reviewer 增强（与人工审批打通）
+- [ ] 人工审批节点 UI（`POST /api/agent/runs/[id]/approve` + Orchestrator `awaitHumanApproval`）
+- [ ] 报告 PDF / Markdown 导出
+- [ ] Run 持久化（Drizzle/PostgreSQL 替换 InMemory `RunRepository`）
+- [ ] 多用户隔离与权限模型
+- [ ] PresentationScriptBar 接入驾驶舱 / 方案对比页 / Workflow 页
 
 ## Phase 5：报告与会议演示
 
-- [ ] 报告预览
-- [ ] 报告导出（PDF / Markdown）
-- [ ] 预录制 Run 回放
-- [ ] 故障降级策略
-- [ ] 演示脚本与会议彩排
+- [ ] 报告预览（在 `/reports` 接入推荐方案 + 风险 + 引用 + 人工复核位）
+- [ ] 报告导出（PDF + Markdown）
+- [ ] 预录制 Run 自动播放（基于 `PresentationScriptBar` + Workflow 事件流）
+- [ ] 故障降级策略的演示动画（Key 缺失 → Replay 自动展示）
+- [ ] 会议彩排与导出
 - [ ] 图表主题缓存随 `data-theme` 失效（`invalidateChartThemeCache` 接入）

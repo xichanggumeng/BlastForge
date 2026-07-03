@@ -9,6 +9,10 @@
  *   - 右侧：详情面板 / 风险 / 人工复核
  * Mobile：
  *   - 步骤式：场景输入 → 参数确认 → 执行规划 → 方案对比 → 风险与确认
+ *
+ * Phase 3 增强：
+ *   - 支持 agentMode：true 时走 Agent Runtime 流式接口（自动降级到 Demo Replay）；
+ *   - agentMode: false（默认）保留会话 3 的本地 Demo Planner，确保零侵入。
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -52,11 +56,14 @@ import {
 } from "./planning-step-timeline";
 import { PlannerChartTabs, type PlannerChartKey } from "./planner-chart-tabs";
 import { usePlanningExecution } from "./use-planning-execution";
+import { useAgentWorkflow } from "./use-agent-workflow";
 import { useSelectionStore, usePlannerUIStore } from "@/stores/planner-store";
 
 interface PlannerWorkbenchProps {
   /** Server side, optional initial preset id from URL */
   initialPresetId?: ScenarioPreset["id"];
+  /** 是否启用 Agent Runtime；false 时保留会话 3 的本地 Demo Planner。 */
+  agentMode?: boolean;
 }
 
 const MOBILE_STEPS: Array<{
@@ -71,13 +78,14 @@ const MOBILE_STEPS: Array<{
   { key: "risks", label: "风险与确认", description: "人工复核点列表与阻断提示。" },
 ];
 
-export function PlannerWorkbench({ initialPresetId }: PlannerWorkbenchProps) {
+export function PlannerWorkbench({ initialPresetId, agentMode = false }: PlannerWorkbenchProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const presetIdFromUrl = (searchParams.get("preset") as ScenarioPreset["id"] | null) ?? initialPresetId ?? null;
   const selectedSchemeIdFromUrl = searchParams.get("scheme");
   const chartFromUrl = (searchParams.get("chart") as PlannerChartKey | null) ?? null;
+  const agentModeFromUrl = searchParams.get("agent") === "1";
 
   const [activePresetId, setActivePresetId] = useState<ScenarioPreset["id"] | null>(presetIdFromUrl ?? "standard");
 
@@ -86,9 +94,30 @@ export function PlannerWorkbench({ initialPresetId }: PlannerWorkbenchProps) {
     return preset ? preset.input : (SCENARIO_PRESETS[0]?.input ?? ({} as BlastScenarioInput));
   }, [activePresetId]);
 
-  const { state, start, cancel, reset } = usePlanningExecution({
+  const localExec = usePlanningExecution({
     stepDurationMs: 520,
   });
+
+  const agentExec = useAgentWorkflow({
+    stepDurationMs: 360,
+  });
+
+  const useAgent = agentMode || agentModeFromUrl;
+  // 统一两种 State 形状：AgentExecutionState 与 ExecutionState 都含 phase / steps / run / error / null；
+  // 额外字段（events / traces / replay）来自 AgentExecutionState，仅在 useAgent 时存在。
+  type UnifiedState =
+    | (typeof localExec.state & { replay: false; events: readonly never[]; traces: readonly never[]; agentRunId: null })
+    | (typeof agentExec.state & { error: string | null });
+
+  const state: UnifiedState = (
+    useAgent
+      ? { ...agentExec.state, error: agentExec.state.error }
+      : { ...localExec.state, replay: false, events: [], traces: [], agentRunId: null }
+  ) as UnifiedState;
+  const startLocal = localExec.start;
+  const startAgent = agentExec.start;
+  const cancel = useAgent ? agentExec.cancel : localExec.cancel;
+  const reset = useAgent ? agentExec.reset : localExec.reset;
 
   const setSelected = useSelectionStore((s) => s.setSelectedSchemeId);
   const mobileStep = usePlannerUIStore((s) => s.mobileStep);
@@ -157,13 +186,17 @@ export function PlannerWorkbench({ initialPresetId }: PlannerWorkbenchProps) {
   const handleSubmit = useCallback(
     (input: BlastScenarioInput) => {
       const verified = blastScenarioInputSchema.parse(input);
-      start({
-        input: verified,
-        presetId: activePresetId ?? undefined,
-      });
+      if (useAgent) {
+        void startAgent({ input: verified, presetId: activePresetId ?? undefined });
+      } else {
+        startLocal({
+          input: verified,
+          presetId: activePresetId ?? undefined,
+        });
+      }
       setMobileStep(2);
     },
-    [activePresetId, setMobileStep, start],
+    [activePresetId, setMobileStep, startAgent, startLocal, useAgent],
   );
 
   const selectedScheme = useMemo(() => {
@@ -178,6 +211,14 @@ export function PlannerWorkbench({ initialPresetId }: PlannerWorkbenchProps) {
   return (
     <div className="flex flex-col gap-6 lg:gap-8">
       <PlannerSafetyNotice />
+      {useAgent ? (
+        <AgentModeBanner
+          replay={state.replay}
+          agentRunId={'agentRunId' in state ? state.agentRunId : null}
+          events={state.events?.length ?? 0}
+          phase={state.phase}
+        />
+      ) : null}
 
       <MobileStepper
         step={mobileStep}
@@ -223,12 +264,16 @@ export function PlannerWorkbench({ initialPresetId }: PlannerWorkbenchProps) {
         >
           <ExecuteSection
             state={state}
-            onStart={() =>
-              start({
-                input: initialInput,
-                presetId: activePresetId ?? undefined,
-              })
-            }
+            onStart={() => {
+              if (useAgent) {
+                void startAgent({ input: initialInput, presetId: activePresetId ?? undefined });
+              } else {
+                startLocal({
+                  input: initialInput,
+                  presetId: activePresetId ?? undefined,
+                });
+              }
+            }}
             onCancel={cancel}
             onReset={() => {
               reset();
@@ -302,12 +347,16 @@ export function PlannerWorkbench({ initialPresetId }: PlannerWorkbenchProps) {
 
           <ExecuteSection
             state={state}
-            onStart={() =>
-              start({
-                input: initialInput,
-                presetId: activePresetId ?? undefined,
-              })
-            }
+            onStart={() => {
+              if (useAgent) {
+                void startAgent({ input: initialInput, presetId: activePresetId ?? undefined });
+              } else {
+                startLocal({
+                  input: initialInput,
+                  presetId: activePresetId ?? undefined,
+                });
+              }
+            }}
             onCancel={cancel}
             onReset={() => {
               reset();
@@ -497,7 +546,12 @@ function ExecuteSection({
   onReset,
   hasRun,
 }: {
-  state: ReturnType<typeof usePlanningExecution>["state"];
+  state: {
+    phase: string;
+    steps: ReadonlyArray<{ id: string; label: string; status: string }>;
+    run: PlanningRun | null;
+    error: string | null;
+  };
   onStart: () => void;
   onCancel: () => void;
   onReset: () => void;
@@ -656,7 +710,12 @@ function RunSummarySidebar({
   selectedScheme,
   run,
 }: {
-  state: ReturnType<typeof usePlanningExecution>["state"];
+  state: {
+    phase: string;
+    steps: ReadonlyArray<{ id: string; label: string; status: string }>;
+    run: PlanningRun | null;
+    error: string | null;
+  };
   selectedScheme: Scheme | undefined;
   run: PlanningRun | null;
 }) {
@@ -720,5 +779,47 @@ function RunSummarySidebar({
         scheme={selectedScheme}
       />
     </>
+  );
+}
+
+function AgentModeBanner({
+  replay,
+  agentRunId,
+  events,
+  phase,
+}: {
+  replay: boolean;
+  agentRunId: string | null;
+  events: number;
+  phase: string;
+}) {
+  return (
+    <Card padding="sm" className="gap-2">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge tone={replay ? 'warning' : 'primary'} size="sm">
+          {replay ? '演示回放模式' : '真实 Agent 调用'}
+        </Badge>
+        <Badge tone="outline" size="sm">
+          Phase 3 / Agent Runtime
+        </Badge>
+        <span className="text-muted-foreground">
+          状态：<span className="font-semibold text-foreground">{phase}</span>
+        </span>
+        <span className="text-muted-foreground">已接收事件：{events}</span>
+        {agentRunId ? (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            Run {agentRunId.slice(-8)}
+          </span>
+        ) : null}
+        <Button asChild size="sm" variant="ghost" className="ml-auto">
+          <Link href={`/workflow${agentRunId ? `?tab=live&runId=${agentRunId}` : '?tab=live'}`}>
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> 查看 Workflow
+          </Link>
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        未配置 <code className="rounded bg-muted px-1 py-0.5">DEEPSEEK_API_KEY</code> 或调用失败时自动降级到演示回放；不暴露 API Key 与系统 Prompt。
+      </p>
+    </Card>
   );
 }

@@ -55,10 +55,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Hydrate from localStorage after mount. The inline ThemeScript already
     // set the visible data-theme attribute, so the first paint is correct.
-    /* eslint-disable react-hooks/set-state-in-effect */
     setModeState(readStoredMode());
     setResolved(resolveTheme(readStoredMode()));
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {

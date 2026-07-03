@@ -24,10 +24,15 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
-import type { PlanningStepEvent, PlanningStepStatus } from "@/modules/parameter-planning/domain";
+import type { PlanningStepStatus } from "@/modules/parameter-planning/domain";
 
 interface PlanningStepTimelineProps {
-  steps: readonly PlanningStepEvent[];
+  steps: ReadonlyArray<{
+    id: string;
+    label: string;
+    status: PlanningStepStatus | string;
+    detail?: string;
+  }>;
   className?: string;
 }
 
@@ -102,11 +107,14 @@ export function PlanningStepTimeline({
       className={cn("flex flex-col gap-2", className)}
     >
       {steps.map((step, idx) => {
-        const meta = STATUS_META[step.status];
+        const statusKey = (Object.prototype.hasOwnProperty.call(STATUS_META, step.status)
+          ? step.status
+          : "pending") as PlanningStepStatus;
+        const meta = STATUS_META[statusKey];
         const Icon = meta.icon;
         const isExpanded = expanded.has(idx);
-        const isRunning = step.status === "running";
-        const isBlocked = step.status === "blocked";
+        const isRunning = statusKey === "running";
+        const isBlocked = statusKey === "blocked";
 
         return (
           <li
@@ -189,7 +197,10 @@ export function ExecutionCallout({
     | "cancelling"
     | "cancelled"
     | "failed"
-    | "done";
+    | "done"
+    | "connecting"
+    | "fallback"
+    | string;
   blockedReason?: string;
 }) {
   if (phase === "running") {

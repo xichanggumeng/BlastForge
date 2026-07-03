@@ -8,6 +8,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     reporters: ["default"],
     outputFile: { junit: "test-results/junit.xml" },
+    setupFiles: ["./vitest.setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -20,6 +21,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      "server-only": resolve(__dirname, "vitest.shims/server-only.ts"),
     },
   },
 });
