@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 import { NAV_ITEMS } from "@/config/nav";
@@ -20,30 +21,45 @@ const MOBILE_BOTTOM_KEYS = NAV_ITEMS.filter(
 
 export function MobileNav() {
   const { mobileOpen, setMobileOpen } = useSidebar();
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  // 同步 mobileOpen 到原生 <dialog> 的 open / close，避免 CSS transform 与可见性漂移
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!el) return;
+    if (mobileOpen && !el.open) {
+      el.showModal();
+    } else if (!mobileOpen && el.open) {
+      el.close();
+    }
+  }, [mobileOpen]);
+
+  // 抽屉打开时禁止 body 滚动，松手关闭后恢复
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileOpen]);
 
   return (
-    <div
+    <dialog
+      ref={dialogRef}
+      aria-label="移动端导航"
       className={cn(
-        "fixed inset-0 z-40 lg:hidden",
-        mobileOpen ? "pointer-events-auto" : "pointer-events-none",
+        "fixed inset-0 z-[60] m-0 h-screen max-h-screen w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-overlay lg:hidden",
       )}
-      aria-hidden={!mobileOpen}
+      onClose={() => setMobileOpen(false)}
+      onClick={(event) => {
+        // 点击空白遮罩时关闭（点击 <aside> 内部不触发）
+        if (event.target === dialogRef.current) setMobileOpen(false);
+      }}
     >
-      <div
-        onClick={() => setMobileOpen(false)}
-        className={cn(
-          "absolute inset-0 bg-overlay transition-opacity duration-base",
-          mobileOpen ? "opacity-100" : "opacity-0",
-        )}
-      />
       <aside
-        className={cn(
-          "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface shadow-lg transition-transform duration-base",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-        role="dialog"
-        aria-label="移动端导航"
-        aria-modal="true"
+        className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface shadow-lg transition-transform duration-base motion-reduce:duration-0 data-[state=open]:translate-x-0 data-[state=closed]:-translate-x-full"
+        data-state={mobileOpen ? "open" : "closed"}
       >
         <div className="flex items-center justify-between border-b border-border p-3">
           <span className="text-sm font-semibold text-foreground">导航菜单</span>
@@ -64,7 +80,7 @@ export function MobileNav() {
           <ThemeToggle />
         </div>
       </aside>
-    </div>
+    </dialog>
   );
 }
 
