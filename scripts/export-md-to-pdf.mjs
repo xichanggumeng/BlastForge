@@ -50,9 +50,10 @@ p code, li code {
   color: #b91c1c;
 }
 pre {
-  background: #0f172a;
-  color: #e2e8f0;
+  background: #ffffff;
+  color: #111111;
   padding: 4mm;
+  border: 1px solid #d1d5db;
   border-radius: 3px;
   overflow-wrap: break-word;
   white-space: pre-wrap;
@@ -65,6 +66,14 @@ pre code {
   padding: 0;
   font-size: inherit;
 }
+/* 关键字高亮（白底黑字下的微调） */
+.sourceCode .kw  { color: #1d4ed8; font-weight: bold; }
+.sourceCode .st  { color: #047857; }
+.sourceCode .co  { color: #6b7280; font-style: italic; }
+.sourceCode .fu  { color: #7c3aed; }
+.sourceCode .va  { color: #b45309; }
+.sourceCode .cn  { color: #be185d; }
+.sourceCode .ot  { color: #374151; }
 blockquote {
   border-left: 3px solid #94a3b8;
   margin: 0 0 3mm;
