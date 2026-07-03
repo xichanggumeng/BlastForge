@@ -208,19 +208,15 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const CHART_SENTINEL_RE = /::chart-(radar|bars|heatmap)::([\s\S]*?)::/g;
+
 export function exportHTML(report: Report): string {
   const { recommended, alternatives, riskSchemes } = extractSchemesFromSections(report);
   const schemesHtml = renderSchemesSectionForHtml(recommended, alternatives, riskSchemes);
 
   const sectionsHtml = report.sections
     .filter((s) => s.key !== "schemes" && s.key !== "citations")
-    .map(
-      (s) => `
-  <section class="report-section" data-key="${escapeHtml(s.key)}">
-    <h2>${escapeHtml(s.title)}</h2>
-    ${renderMarkdownLite(s.body)}
-  </section>`,
-    )
+    .map((s) => renderReportSectionHtml(s))
     .join("");
 
   const citationCards = (report.citations as ReadonlyArray<CitationCard>).length === 0
@@ -484,6 +480,59 @@ export function exportHTML(report: Report): string {
   /* ===== 其它 ===== */
   ul { padding-left: 18px; }
   li { margin: 3px 0; }
+
+  /* ===== 图表容器 ===== */
+  .chart-figure { margin: 10px 0 4px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg-soft); }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 9.5pt; color: var(--muted); }
+  .chart-legend__item { display: inline-flex; align-items: center; gap: 4px; }
+  .chart-legend__item i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; border: 1px solid var(--border); }
+  .chart-legend__muted { font-size: 9pt; }
+
+  /* 雷达图 */
+  .radar-svg { width: 100%; height: auto; max-width: 460px; display: block; margin: 0 auto; }
+  .radar-ring { fill: none; stroke: var(--border); stroke-width: 0.5; }
+  .radar-axis { stroke: var(--border); stroke-width: 0.5; }
+  .radar-axis-label { font-size: 10pt; fill: var(--fg-soft); font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .radar-poly { transition: fill-opacity 120ms; }
+
+  /* 柱状对比图 */
+  .bars-header { display: grid; grid-template-columns: 120px 1fr; gap: 4px; padding: 0 4px 6px; border-bottom: 1px solid var(--border); font-size: 9.5pt; }
+  .bars-header__cell { padding-left: 6px; font-weight: 600; }
+  .bars-body { display: flex; flex-direction: column; }
+  .bar-row { display: grid; grid-template-columns: 120px 1fr; gap: 6px; padding: 4px 4px; border-bottom: 1px dotted var(--border); }
+  .bar-row:last-child { border-bottom: none; }
+  .bar-row__label { font-size: 9.5pt; color: var(--fg-soft); font-weight: 600; }
+  .bar-row__unit { color: var(--muted); font-weight: 400; margin-left: 2px; font-size: 9pt; }
+  .bar-row__cells { display: flex; flex-direction: column; gap: 3px; }
+  .bar-cell { position: relative; height: 14px; border-radius: 3px; background: #f3f4f6; overflow: hidden; display: flex; align-items: center; }
+  .bar-cell__fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px 0 0 3px; }
+  .bar-cell__label { position: relative; padding-left: 6px; font-size: 8.5pt; color: var(--fg-soft); z-index: 1; }
+  .bar-cell--empty { background: #f9fafb; color: var(--muted); font-size: 8.5pt; align-items: center; justify-content: center; }
+
+  /* 热力图 */
+  .heatmap-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  .heatmap-corner { background: var(--bg-soft); padding: 4px 6px; text-align: left; }
+  .heatmap-head { padding: 4px 6px; background: var(--bg-soft); font-weight: 600; color: var(--fg-soft); text-align: center; }
+  .heatmap-head--max { background: var(--accent-soft); color: var(--accent); }
+  .heatmap-row-label { padding: 4px 6px; text-align: left; background: var(--bg-soft); color: var(--fg-soft); font-weight: 600; font-size: 9pt; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .heatmap-cell { padding: 4px 6px; text-align: center; font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 9pt; border: 1px solid #fff; }
+  .heatmap-cell--empty { background: #f9fafb; color: var(--muted); }
+  .heatmap-cell--rowmax, .heatmap-cell--colavg { background: var(--bg-soft); font-weight: 600; color: var(--fg); }
+  .heatmap-cell--grand { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+  /* 风险 / 复核 / 决策卡片 */
+  .risk-summary { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; margin: 10px 0 0; border-radius: 8px; background: var(--bg-soft); border: 1px solid var(--border); font-size: 9.5pt; }
+  .risk-summary__chip { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 9pt; }
+  .risk-summary__chip--high { background: #fef2f2; color: var(--danger); border: 1px solid #fca5a5; }
+  .risk-summary__chip--medium { background: #fff7ed; color: var(--warning); border: 1px solid #fdba74; }
+  .risk-summary__chip--low { background: #ecfdf5; color: var(--success); border: 1px solid #6ee7b7; }
+  .risk-summary__hint { color: var(--muted); font-size: 9pt; }
+
+  .review-hint { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: #fff7ed; border: 1px solid #fdba74; color: var(--warning); font-size: 9.5pt; }
+
+  .decision-card { margin: 12px 0 4px; padding: 14px 16px; border-radius: 12px; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 70%); border: 1.5px solid var(--accent); }
+  .decision-card__title { font-size: 11pt; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 6px; text-transform: uppercase; }
+  .decision-card p { margin: 0; color: var(--fg); font-size: 11pt; line-height: 1.7; }
 </style>
 </head>
 <body>
@@ -569,4 +618,332 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * 渲染单个 ReportSection 为 HTML。
+ *
+ * - 若 body 含 `::chart-radar|bars|heatmap::{...json...}::` 哨兵，则把 sentinel 替换为 SVG 图表；
+ * - 风险 / 复核 / 最终决策章节在 markdown 之外再额外渲染卡片化 HTML；
+ * - 其余章节直接走 markdown 轻渲染。
+ */
+function renderReportSectionHtml(s: { key: string; title: string; body: string }): string {
+  let body = s.body;
+
+  // 哨兵替换：解析 -> SVG
+  body = body.replace(CHART_SENTINEL_RE, (_match, kind: string, json: string) => {
+    try {
+      const payload = JSON.parse(json) as unknown;
+      if (kind === "radar") return renderRadarSvg(payload);
+      if (kind === "bars") return renderBarsSvg(payload);
+      if (kind === "heatmap") return renderHeatmapSvg(payload);
+    } catch {
+      // ignore parse errors
+    }
+    return '<p class="muted">图表数据无法解析。</p>';
+  });
+
+  // 风险 / 复核 / 最终决策：在 markdown 之外再追加卡片化 HTML
+  let extraHtml = "";
+  if (s.key === "risks") extraHtml = renderRisksHtml(s.body);
+  if (s.key === "reviews") extraHtml = renderReviewsHtml(s.body);
+  if (s.key === "final-decision") extraHtml = renderFinalDecisionHtml(s.body);
+
+  return `
+  <section class="report-section" data-key="${escapeHtml(s.key)}">
+    <h2>${escapeHtml(s.title)}</h2>
+    ${renderMarkdownLite(body)}
+    ${extraHtml}
+  </section>`;
+}
+
+/**
+ * 多方案雷达 SVG：
+ *  - 6 维：安全 / 适配 / 经济 / 便利 / 环境 / 综合
+ *  - 不同 tone 的方案绘制不同颜色的多边形 + 顶点标签
+ */
+function renderRadarSvg(payload: unknown): string {
+  const data = (payload ?? {}) as {
+    schemes?: { tag: string; tone: string; score: { safety: number; suitability: number; economy: number; convenience: number; environment: number; overall: number } }[];
+  };
+  const schemes = Array.isArray(data.schemes) ? data.schemes : [];
+  if (schemes.length === 0) return '<p class="muted">_无可对比方案_</p>';
+
+  const dims: { key: keyof typeof schemes[0]["score"]; label: string }[] = [
+    { key: "safety", label: "安全" },
+    { key: "suitability", label: "适配" },
+    { key: "economy", label: "经济" },
+    { key: "convenience", label: "便利" },
+    { key: "environment", label: "环境" },
+    { key: "overall", label: "综合" },
+  ];
+  const cx = 220;
+  const cy = 220;
+  const radius = 160;
+  const axisAngle = (i: number): number => (-Math.PI / 2) + (2 * Math.PI * i) / dims.length;
+  const pointFor = (score: number, i: number): { x: number; y: number } => {
+    const v = Math.max(0, Math.min(100, score));
+    const r = (radius * v) / 100;
+    const a = axisAngle(i);
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  };
+
+  // 网格 + 刻度
+  const rings = [20, 40, 60, 80, 100];
+  const ringHtml = rings
+    .map((v) => {
+      const points = dims
+        .map((_, i) => {
+          const { x, y } = pointFor(v, i);
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        })
+        .join(" ");
+      return `<polygon class="radar-ring" points="${points}" />`;
+    })
+    .join("");
+  const axesHtml = dims
+    .map((d, i) => {
+      const p = pointFor(100, i);
+      const labelOffset = 12;
+      const a = axisAngle(i);
+      const lx = cx + (radius + labelOffset) * Math.cos(a);
+      const ly = cy + (radius + labelOffset) * Math.sin(a);
+      return `
+        <line class="radar-axis" x1="${cx}" y1="${cy}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" />
+        <text class="radar-axis-label" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle">${escapeHtml(d.label)}</text>`;
+    })
+    .join("");
+
+  // 方案多边形
+  const colorOfTone = (tone: string): string => {
+    if (tone === "primary") return "var(--accent)";
+    if (tone === "danger") return "var(--danger)";
+    return "#475569";
+  };
+  const schemePolys = schemes
+    .map((s) => {
+      const points = dims
+        .map((d, i) => {
+          const v = s.score[d.key];
+          const { x, y } = pointFor(Number(v) || 0, i);
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        })
+        .join(" ");
+      return `<polygon class="radar-poly" data-tone="${escapeHtml(s.tone)}" points="${points}" fill="${colorOfTone(s.tone)}" fill-opacity="0.12" stroke="${colorOfTone(s.tone)}" stroke-width="1.6" />`;
+    })
+    .join("");
+
+  const legend = schemes
+    .map((s) => {
+      const color = colorOfTone(s.tone);
+      const overall = Number(s.score.overall) || 0;
+      return `<span class="chart-legend__item"><i style="background:${color}"></i>${escapeHtml(s.tag)} · ${overall.toFixed(0)}</span>`;
+    })
+    .join("");
+
+  return `
+  <figure class="chart-figure">
+    <svg class="radar-svg" viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="多方案六维雷达图">
+      ${ringHtml}
+      ${axesHtml}
+      ${schemePolys}
+    </svg>
+    <figcaption class="chart-legend">${legend}</figcaption>
+  </figure>`;
+}
+
+/**
+ * 参数对比柱状图：
+ *  - 行 = 参数 label
+ *  - 每行多列柱（每个方案一列）
+ *  - 数值取所有方案中最大值的相对长度
+ */
+function renderBarsSvg(payload: unknown): string {
+  const data = (payload ?? {}) as {
+    schemes?: { tag: string; tone: string }[];
+    rows?: { label: string; unit: string; values: Record<string, number | null> }[];
+  };
+  const schemes = Array.isArray(data.schemes) ? data.schemes : [];
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  if (schemes.length === 0 || rows.length === 0) return '<p class="muted">_无可对比方案_</p>';
+
+  const colorOfTone = (tone: string): string => {
+    if (tone === "primary") return "var(--accent)";
+    if (tone === "danger") return "var(--danger)";
+    return "#475569";
+  };
+
+  // 全局最大值用于归一
+  const maxVal = rows.reduce((acc, r) => {
+    for (const v of Object.values(r.values)) {
+      if (typeof v === "number" && v > acc) acc = v;
+    }
+    return acc;
+  }, 0) || 1;
+
+  const rowHtml = rows
+    .map((r) => {
+      const cells = schemes
+        .map((s) => {
+          const v = r.values[s.tag];
+          if (typeof v !== "number") {
+            return `<span class="bar-cell bar-cell--empty" title="${escapeHtml(s.tag)}">—</span>`;
+          }
+          const pct = Math.max(2, (v / maxVal) * 100);
+          return `
+            <span class="bar-cell" title="${escapeHtml(s.tag)} · ${v.toFixed(2)} ${escapeHtml(r.unit)}">
+              <span class="bar-cell__fill" data-tone="${escapeHtml(s.tone)}" style="width:${pct.toFixed(1)}%; background:${colorOfTone(s.tone)};"></span>
+              <span class="bar-cell__label">${escapeHtml(s.tag)}: ${v.toFixed(2)} ${escapeHtml(r.unit)}</span>
+            </span>`;
+        })
+        .join("");
+      return `
+        <div class="bar-row">
+          <div class="bar-row__label" title="${escapeHtml(r.label)} (${escapeHtml(r.unit)})">${escapeHtml(r.label)} <span class="bar-row__unit">${escapeHtml(r.unit)}</span></div>
+          <div class="bar-row__cells">${cells}</div>
+        </div>`;
+    })
+    .join("");
+
+  const header = schemes
+    .map((s) => `<span class="bars-header__cell" style="color:${colorOfTone(s.tone)}">${escapeHtml(s.tag)}</span>`)
+    .join("");
+
+  return `
+  <figure class="chart-figure">
+    <div class="bars-header">${header}</div>
+    <div class="bars-body">${rowHtml}</div>
+  </figure>`;
+}
+
+/**
+ * 敏感性热力图：
+ *  - 行 = 参数 axes
+ *  - 列 = delta（-3..+3 等）
+ *  - 单元格颜色按 |outputDelta| / maxAbs 渲染红 -> 黄 -> 浅
+ */
+function renderHeatmapSvg(payload: unknown): string {
+  const data = (payload ?? {}) as {
+    axes?: string[];
+    deltas?: number[];
+    matrix?: Record<string, Record<number, number>>;
+    maxAbs?: number;
+  };
+  const axes = Array.isArray(data.axes) ? data.axes : [];
+  const deltas = Array.isArray(data.deltas) ? data.deltas : [];
+  const matrix = (data.matrix ?? {}) as Record<string, Record<number, number>>;
+  const maxAbs = typeof data.maxAbs === "number" && data.maxAbs > 0 ? data.maxAbs : 1;
+  if (axes.length === 0 || deltas.length === 0) return '<p class="muted">_本次 Run 未生成敏感性分析_</p>';
+
+  // 颜色：响应强度 [0,1] → 浅黄 (#fef9c3) -> 深橙 (#c2410c)
+  const colorOfIntensity = (intensity: number, sign: number): string => {
+    const t = Math.max(0, Math.min(1, intensity));
+    // 线性插值 RGB
+    const r = Math.round(254 - (254 - 194) * t);
+    const g = Math.round(249 - (249 - 65) * t);
+    const b = Math.round(195 - (195 - 12) * t);
+    const alpha = sign < 0 ? 0.55 : 1.0;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const headRow = `<tr><th class="heatmap-corner">参数 \\ Δ</th>${deltas
+    .map((d) => `<th class="heatmap-head">${d > 0 ? `+${d}` : d}</th>`)
+    .join("")}<th class="heatmap-head heatmap-head--max">|Σ|</th></tr>`;
+
+  const rowsHtml = axes
+    .map((axis) => {
+      let rowAbs = 0;
+      const cells = deltas
+        .map((d) => {
+          const v = matrix[axis]?.[d];
+          if (typeof v !== "number") return `<td class="heatmap-cell heatmap-cell--empty">—</td>`;
+          const abs = Math.abs(v);
+          rowAbs += abs;
+          const intensity = abs / maxAbs;
+          const color = colorOfIntensity(intensity, Math.sign(v));
+          const textColor = intensity > 0.55 ? "#fff" : "#1f2937";
+          return `<td class="heatmap-cell" style="background:${color}; color:${textColor};" title="${escapeHtml(axis)} Δ${d > 0 ? `+${d}` : d} → ${v.toFixed(2)}">${v.toFixed(2)}</td>`;
+        })
+        .join("");
+      const rowAvg = (rowAbs / deltas.length).toFixed(2);
+      return `<tr><th class="heatmap-row-label">${escapeHtml(axis)}</th>${cells}<td class="heatmap-cell heatmap-cell--rowmax">${rowAvg}</td></tr>`;
+    })
+    .join("");
+
+  // 列总均值
+  let colSum = 0;
+  const colAvgRow = `<tr><th class="heatmap-row-label">列均值</th>${deltas
+    .map((d) => {
+      let sum = 0;
+      let n = 0;
+      for (const axis of axes) {
+        const v = matrix[axis]?.[d];
+        if (typeof v === "number") {
+          sum += v;
+          n += 1;
+        }
+      }
+      const avg = n > 0 ? sum / n : 0;
+      colSum += sum;
+      return `<td class="heatmap-cell heatmap-cell--colavg">${avg.toFixed(2)}</td>`;
+    })
+    .join("")}<td class="heatmap-cell heatmap-cell--grand">${(colSum / (axes.length * deltas.length || 1)).toFixed(2)}</td></tr>`;
+
+  return `
+  <figure class="chart-figure">
+    <table class="heatmap-table" role="table" aria-label="参数敏感性热力图">
+      <thead>${headRow}</thead>
+      <tbody>${rowsHtml}${colAvgRow}</tbody>
+    </table>
+    <figcaption class="chart-legend">
+      <span class="chart-legend__item"><i style="background:rgba(254,249,195,1)"></i>低响应</span>
+      <span class="chart-legend__item"><i style="background:rgba(224,157,103,1)"></i>中响应</span>
+      <span class="chart-legend__item"><i style="background:rgba(194,65,12,1)"></i>高响应</span>
+      <span class="chart-legend__muted">（响应 = |Δ 综合评分 / 微调幅度| 归一化强度；负值单元降透明度）</span>
+    </figcaption>
+  </figure>`;
+}
+
+/**
+ * 风险分级 HTML 卡片（在 markdown 渲染之外追加）
+ */
+function renderRisksHtml(body: string): string {
+  // 复用 markdown 中已有的"### 风险分级统计"表格，不再重复生成。
+  // 仅追加一段关于如何阅读本章节的提示卡片。
+  if (!/风险分级统计|high/.test(body)) return "";
+  const counts = {
+    high: (body.match(/### HIGH/g) || []).length,
+    medium: (body.match(/### MEDIUM/g) || []).length,
+    low: (body.match(/### LOW/g) || []).length,
+  };
+  return `<aside class="risk-summary">
+    <span class="risk-summary__chip risk-summary__chip--high">HIGH × ${counts.high}</span>
+    <span class="risk-summary__chip risk-summary__chip--medium">MEDIUM × ${counts.medium}</span>
+    <span class="risk-summary__chip risk-summary__chip--low">LOW × ${counts.low}</span>
+    <span class="risk-summary__hint">高 / 中风险是后续"最终决策建议"中的失效条件。</span>
+  </aside>`;
+}
+
+/**
+ * 人工重点确认 HTML 卡片
+ */
+function renderReviewsHtml(body: string): string {
+  if (!/重点关注项|审批动态/.test(body)) return "";
+  return `<aside class="review-hint">
+    <strong>提示：</strong>规划阶段的复核项不进入自动审批；可在 Planner → Knowledge / Approvals 页面查阅 / 处理。
+  </aside>`;
+}
+
+/**
+ * 最终决策 HTML 卡片（突出"决策结论"一行）
+ */
+function renderFinalDecisionHtml(body: string): string {
+  const m = body.match(/### 决策结论\s*\n([\s\S]+?)(?:\n### |\s*$)/);
+  if (!m) return "";
+  const conclusion = m[1]?.trim() ?? "";
+  if (!conclusion) return "";
+  return `<aside class="decision-card">
+    <header class="decision-card__title">决策结论</header>
+    <p>${escapeHtml(conclusion)}</p>
+  </aside>`;
 }

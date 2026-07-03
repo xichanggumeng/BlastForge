@@ -17,6 +17,26 @@
 - 新增运行时依赖：`puppeteer`（与 `scripts/export-md-to-pdf.mjs` 已有的 dev-only 用法保持一致，本次进入运行时依赖）。
 - `npm install` 时 puppeteer 自动下载 Chromium；若网络隔离导致失败，浏览器「另存为 PDF」仍可用（`format=html`）。
 
+### 2026-07-04 追加：报告内容强化 — 三类图表 + 风险分级 + 重点确认 + 最终决策
+
+- `buildSections` 新增 4 个章节：
+  - **`scheme-radar`**：多方案 6 维评分雷达（安全/适配/经济/便利/环境/综合），用 JSON 哨兵 `::chart-radar::{...}::` 携带结构化数据。
+  - **`parameter-comparison`**：推荐 / 备选 / 风险方案的关键参数对比（标签并集 + 每个方案对应取值），用 `::chart-bars::` 哨兵。
+  - **`sensitivity`**：参数敏感性热力图（行=参数轴 × 列=微调幅度 Δ，颜色=综合评分响应强度 / `maxAbs` 归一化），用 `::chart-heatmap::` 哨兵。
+  - **`final-decision`**：最终决策建议 —— 推荐方案 + top-3 推荐理由 + 备选触发条件 + 风险方案 + 失效条件 + 必须人工复核项 + 一句话决策结论。
+- `risks` 章节升级为分级表（high / medium / low 三段）+ 关联方案 / 参数标注；`approval` 章节并入新 `reviews` 章节「人工重点确认」：`run.reviews`（规划阶段识别）+ `approval` 快照（审批动态）双输出。
+- `exportHTML` 新增 SVG 渲染器：
+  - `renderRadarSvg` —— 纯 SVG 6 维雷达（环 + 轴 + 多方案多边形 + 图例），不依赖 ECharts，PDF 渲染不空白。
+  - `renderBarsSvg` —— CSS Grid + 横向柱状多方案对比，缺失值显示 `—`。
+  - `renderHeatmapSvg` —— `<table>` 形式的热力图，色阶由浅黄 → 中橙 → 深橙，负响应降透明度；行 / 列均值与总计汇总。
+- 哨兵机制：builder 把 JSON 嵌入 body，HTML 路径在 `renderReportSectionHtml` 中解析并替换为 SVG；Markdown 路径保留 JSON 原文，便于人读 / 二次解析。
+- 风险 / 复核 / 决策卡片：HTML 输出额外追加 `risk-summary`（按等级 chip）、`review-hint`（跳转提示）、`decision-card`（橙底强调决策结论）。
+- 章节排序调整：把 `scheme-radar` 放在 `rule-issues` 之后、`schemes` 之前；`sensitivity` 放在 `parameter-comparison` 之后；`final-decision` 放在 `citations` 之后、责任边界之前。
+- 新增 2 条 builder 测试：
+  - `builder 生成雷达 / 柱状 / 热力 三个图表章节与最终决策章节`
+  - `HTML 导出解析 chart 哨兵并生成 SVG 雷达 / 柱状 / 热力`
+- 测试：18 文件 / 141 测试全过；lint / typecheck / build 全部通过。
+
 ### 2026-07-04 追加：Workflow Phase 3 强化
 
 - `useWorkflowStream` Hook（`fetch + ReadableStream` SSE；`processLine` 解析四类帧）

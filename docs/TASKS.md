@@ -79,7 +79,15 @@
   - [x] Planner 工作台「下载 PDF / Markdown / JSON」二级入口（fetch + blob）
   - [x] ReportList 与 PreviewOverlay 「下载 PDF」按钮 + Loading 态 + aria-busy
   - [x] `package.json` 增加 `puppeteer` 运行时依赖
-  - [x] `npm run lint` / `typecheck` / `test` / `build` 全部通过
+  - [x] **报告内容强化 — 三类图表 + 风险分级 + 重点确认 + 最终决策**
+  - [x] builder 新增 4 章节：scheme-radar / parameter-comparison / sensitivity / final-decision
+  - [x] risks 升级分级表 + 关联方案 / 参数；approval 并入新 reviews「人工重点确认」
+  - [x] exporters 新增 SVG 雷达 / 柱状对比 / 敏感性热力图（纯 SVG，PDF 渲染不空白）
+  - [x] JSON 哨兵 `::chart-(radar|bars|heatmap)::` 在 HTML 路径解析为 SVG；Markdown 路径保留 JSON 原文
+  - [x] HTML 额外卡片：risk-summary（按等级 chip）/ review-hint / decision-card
+  - [x] 章节排序：scheme-radar 在 schemes 前；final-decision 在责任边界前
+  - [x] 新增 2 条 builder 测试（chart 章节存在 + 哨兵解析）
+  - [x] 18 文件 / 141 测试全过；lint / typecheck / build 全部通过
 - [x] **Workflow 页面 Phase 3 三项可视化能力落地**
   - [x] `useWorkflowStream` Hook（原生 `fetch + ReadableStream` SSE；解析 `meta`/`workflow.event`/`workflow.summary`/`workflow.failed` 四种帧）
   - [x] `applyEventsToSteps` 纯函数：把 `step.started` / `step.completed` / `review.blocked` / `workflow.completed|failed|cancelled` 增量映射到节点状态
@@ -188,7 +196,15 @@
 - [x] 人工审批测试（transition / 历史）
 - [x] 报告数据一致性测试
 - [x] Vitest 124 / 124 通过
-- [x] `npm run lint` / `typecheck` / `test` / `build` 全部通过
+- [x] **报告内容强化 — 三类图表 + 风险分级 + 重点确认 + 最终决策**
+  - [x] builder 新增 4 章节：scheme-radar / parameter-comparison / sensitivity / final-decision
+  - [x] risks 升级分级表 + 关联方案 / 参数；approval 并入新 reviews「人工重点确认」
+  - [x] exporters 新增 SVG 雷达 / 柱状对比 / 敏感性热力图（纯 SVG，PDF 渲染不空白）
+  - [x] JSON 哨兵 `::chart-(radar|bars|heatmap)::` 在 HTML 路径解析为 SVG；Markdown 路径保留 JSON 原文
+  - [x] HTML 额外卡片：risk-summary（按等级 chip）/ review-hint / decision-card
+  - [x] 章节排序：scheme-radar 在 schemes 前；final-decision 在责任边界前
+  - [x] 新增 2 条 builder 测试（chart 章节存在 + 哨兵解析）
+  - [x] 18 文件 / 141 测试全过；lint / typecheck / build 全部通过
 
 ### 文档
 

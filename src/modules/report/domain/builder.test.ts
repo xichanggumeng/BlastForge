@@ -215,6 +215,139 @@ describe("Exporters", () => {
     expect(html).toContain(".citation-card"); // 引用卡 CSS
   });
 
+  it("builder 生成雷达 / 柱状 / 热力 三个图表章节与最终决策章节", () => {
+    const run = makeRun();
+    // 注入敏感性 + 多个方案让图表有内容
+    run.schemeSet.alternativeIds = ["scheme-a"];
+    run.schemeSet.riskIds = ["scheme-x"];
+    run.schemeSet.schemes = [
+      ...run.schemeSet.schemes,
+      {
+        id: "scheme-a",
+        category: "alternative",
+        label: "备选方案",
+        tag: "备选 B",
+        applicability: "替代配置",
+        parameterSummary: [],
+        predictedParameters: [
+          { key: "holeSpacing", label: "孔距", value: 5.5, unit: "m", range: { min: 4.5, max: 6 }, source: "rule", sourceKind: "rule", confidenceLevel: "high", rationale: "替代", requiresReview: false },
+        ],
+        score: { safety: 75, suitability: 78, economy: 80, convenience: 70, environment: 72, overall: 76 },
+        risks: [],
+      },
+      {
+        id: "scheme-x",
+        category: "risk",
+        label: "风险方案",
+        tag: "风险 C",
+        applicability: "高风险配置",
+        parameterSummary: [],
+        predictedParameters: [
+          { key: "holeSpacing", label: "孔距", value: 6.5, unit: "m", range: { min: 4.5, max: 8 }, source: "rule", sourceKind: "rule", confidenceLevel: "low", rationale: "激进", requiresReview: true },
+        ],
+        score: { safety: 50, suitability: 60, economy: 90, convenience: 65, environment: 55, overall: 60 },
+        risks: ["单耗过高", "振动超限"],
+      },
+    ];
+    run.risks = [
+      { id: "rk1", title: "振动接近上限", description: "实测振速接近阈值", level: "high", schemeId: "scheme-r", paramKey: "maxChargePerDelay" },
+      { id: "rk2", title: "块度偏大", description: "目标块度偏高", level: "medium", schemeId: "scheme-r" },
+    ];
+    run.reviews = [
+      { id: "rv1", reason: "最大单响超出推荐区间", level: "high", paramKey: "maxChargePerDelay", schemeId: "scheme-r" },
+      { id: "rv2", reason: "孔距偏激进", level: "medium", schemeId: "scheme-a" },
+    ];
+    run.sensitivity = {
+      axes: ["holeSpacing", "stemmingLength"],
+      cells: [
+        { parameterKey: "holeSpacing", delta: -2, outputDelta: 4.5 },
+        { parameterKey: "holeSpacing", delta: 0, outputDelta: 0 },
+        { parameterKey: "holeSpacing", delta: 2, outputDelta: -3.2 },
+        { parameterKey: "stemmingLength", delta: -1, outputDelta: -1.8 },
+        { parameterKey: "stemmingLength", delta: 1, outputDelta: 2.1 },
+      ],
+    };
+
+    const report = buildReport({ run, citations: makeCitations(), approval: null });
+    const keys = report.sections.map((s) => s.key);
+    expect(keys).toContain("scheme-radar");
+    expect(keys).toContain("parameter-comparison");
+    expect(keys).toContain("sensitivity");
+    expect(keys).toContain("reviews");
+    expect(keys).toContain("final-decision");
+
+    // 雷达 / 柱 / 热力 章节 body 都包含 JSON 哨兵
+    const radar = report.sections.find((s) => s.key === "scheme-radar")?.body ?? "";
+    expect(radar).toMatch(/::chart-radar::/);
+    const bars = report.sections.find((s) => s.key === "parameter-comparison")?.body ?? "";
+    expect(bars).toMatch(/::chart-bars::/);
+    const heat = report.sections.find((s) => s.key === "sensitivity")?.body ?? "";
+    expect(heat).toMatch(/::chart-heatmap::/);
+
+    // 风险分级表 + 重点确认表 + 决策结论段落都到位
+    const risksSection = report.sections.find((s) => s.key === "risks")?.body ?? "";
+    expect(risksSection).toMatch(/风险分级统计/);
+    expect(risksSection).toMatch(/### HIGH/);
+    expect(risksSection).toMatch(/### MEDIUM/);
+    const reviewsSection = report.sections.find((s) => s.key === "reviews")?.body ?? "";
+    expect(reviewsSection).toMatch(/重点关注项/);
+    expect(reviewsSection).toMatch(/审批动态/);
+    const finalSection = report.sections.find((s) => s.key === "final-decision")?.body ?? "";
+    expect(finalSection).toMatch(/### 推荐方案/);
+    expect(finalSection).toMatch(/### 决策结论/);
+    expect(finalSection).toMatch(/备选触发条件|备选 B/);
+  });
+
+  it("HTML 导出解析 chart 哨兵并生成 SVG 雷达 / 柱状 / 热力", () => {
+    const run = makeRun();
+    run.schemeSet.alternativeIds = ["scheme-a"];
+    run.schemeSet.schemes = [
+      ...run.schemeSet.schemes,
+      {
+        id: "scheme-a",
+        category: "alternative",
+        label: "备选方案",
+        tag: "备选 B",
+        applicability: "替代",
+        parameterSummary: [],
+        predictedParameters: [
+          { key: "holeSpacing", label: "孔距", value: 5.5, unit: "m", range: { min: 4.5, max: 6 }, source: "rule", sourceKind: "rule", confidenceLevel: "high", rationale: "替代", requiresReview: false },
+        ],
+        score: { safety: 75, suitability: 78, economy: 80, convenience: 70, environment: 72, overall: 76 },
+        risks: [],
+      },
+    ];
+    run.risks = [
+      { id: "rk1", title: "振动接近上限", description: "实测振速接近阈值", level: "high", schemeId: "scheme-r", paramKey: "maxChargePerDelay" },
+      { id: "rk2", title: "块度偏大", description: "目标块度偏高", level: "medium", schemeId: "scheme-r" },
+    ];
+    run.reviews = [
+      { id: "rv1", reason: "最大单响超出推荐区间", level: "high", paramKey: "maxChargePerDelay", schemeId: "scheme-r" },
+    ];
+    run.sensitivity = {
+      axes: ["holeSpacing"],
+      cells: [
+        { parameterKey: "holeSpacing", delta: -1, outputDelta: 2 },
+        { parameterKey: "holeSpacing", delta: 1, outputDelta: -3 },
+      ],
+    };
+    const report = buildReport({ run, citations: [], approval: null });
+    const html = exportHTML(report);
+    // 哨兵被解析（不再出现 ::chart-...::）
+    expect(html).not.toMatch(/::chart-(radar|bars|heatmap)::/);
+    // 雷达 SVG 出现
+    expect(html).toMatch(/<svg class="radar-svg"[\s\S]*?<\/svg>/);
+    // 柱状 row 出现
+    expect(html).toMatch(/<div class="bar-row"/);
+    // 热力图 table 出现
+    expect(html).toMatch(/<table class="heatmap-table"/);
+    // 决策卡片
+    expect(html).toMatch(/class="decision-card"/);
+    // 风险 / 复核 提示
+    expect(html).toMatch(/class="risk-summary"/);
+    expect(html).toMatch(/class="review-hint"/);
+  });
+
   it("JSON 导出是合法 JSON", () => {
     const report = buildReport({
       run: makeRun(),
