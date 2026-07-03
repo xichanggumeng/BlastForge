@@ -196,7 +196,7 @@ describe("Exporters", () => {
     expect(md).toContain("责任边界");
   });
 
-  it("HTML 导出含 <html> 标签与 CSS 打印样式 + 封面 + @page 页眉页脚", () => {
+  it("HTML 导出含 <html> 标签与 CSS 打印样式 + 报告头部 + @page 页眉页脚", () => {
     const report = buildReport({
       run: makeRun(),
       citations: makeCitations(),
@@ -206,8 +206,10 @@ describe("Exporters", () => {
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("@media print");
     expect(html).toContain("责任边界");
-    expect(html).toMatch(/<section[^>]*class="[^"]*\bcover\b/); // 封面页存在
-    expect(html).toContain("class=\"cover report-section\"");
+    // 已无封面页：封面应被替换为内联报告头部（不占一页）。
+    expect(html).not.toMatch(/<section[^>]*class="[^"]*\bcover\b/);
+    expect(html).toContain('class="report-head"');
+    expect(html).toMatch(/<header class="report-head">/);
     expect(html).toContain("@page"); // 分页与页码
     expect(html).toContain("counter(page)"); // 页码
     expect(html).toContain("推荐 / 备选 / 风险方案"); // 评分卡章节标题
@@ -335,10 +337,13 @@ describe("Exporters", () => {
     const html = exportHTML(report);
     // 哨兵被解析（不再出现 ::chart-...::）
     expect(html).not.toMatch(/::chart-(radar|bars|heatmap)::/);
-    // 雷达 SVG 出现
+    // 雷达 SVG 出现，且内部多边形不被 <p> 包裹
     expect(html).toMatch(/<svg class="radar-svg"[\s\S]*?<\/svg>/);
-    // 柱状 row 出现
+    expect(html).not.toMatch(/<p>[^<]*<polygon/); // 多边形行不能被包在 <p> 里
+    expect(html).not.toMatch(/<p>[^<]*<line\s+class="radar/); // 雷达轴线不能被包在 <p> 里
+    // 柱状 row 出现，且内部 div 不被 <p> 包裹
     expect(html).toMatch(/<div class="bar-row"/);
+    expect(html).not.toMatch(/<p>[^<]*<div class="bar-row/);
     // 热力图 table 出现
     expect(html).toMatch(/<table class="heatmap-table"/);
     // 决策卡片
@@ -346,6 +351,33 @@ describe("Exporters", () => {
     // 风险 / 复核 提示
     expect(html).toMatch(/class="risk-summary"/);
     expect(html).toMatch(/class="review-hint"/);
+  });
+
+  it("风险分级章节的 markdown 表格被渲染为 <table class=\"md-table\">", () => {
+    const run = makeRun();
+    run.risks = [
+      { id: "rk1", title: "振动接近上限", description: "实测振速接近阈值", level: "high", schemeId: "scheme-r", paramKey: "maxChargePerDelay" },
+      { id: "rk2", title: "块度偏大", description: "目标块度偏高", level: "medium", schemeId: "scheme-r" },
+      { id: "rk3", title: "参数微调", description: "孔距微调", level: "low", schemeId: "scheme-r" },
+    ];
+    const report = buildReport({ run, citations: [], approval: null });
+    const html = exportHTML(report);
+    expect(html).toMatch(/<table class="md-table">/);
+    // HIGH / MEDIUM / LOW 三段标题（H3->h4）被渲染
+    expect(html).toMatch(/<h4>HIGH（\d+）<\/h4>|<h4>MEDIUM（\d+）<\/h4>|<h4>LOW（\d+）<\/h4>/);
+    // 不再出现未渲染的 markdown 源代码（'### HIGH'）
+    expect(html).not.toMatch(/<p>### HIGH/);
+    expect(html).not.toMatch(/<p>### MEDIUM/);
+    expect(html).not.toMatch(/<p>### LOW/);
+  });
+
+  it("封面页已删除，报告头部改为 report-head", () => {
+    const report = buildReport({ run: makeRun(), citations: [], approval: null });
+    const html = exportHTML(report);
+    expect(html).not.toMatch(/<section[^>]*class="[^"]*\bcover\b/);
+    expect(html).toContain('<header class="report-head">');
+    // 封面里的居中标题块已不在（h1 移到 .report-head 内，且不再居中占整页）
+    expect(html).not.toContain('class="cover report-section"');
   });
 
   it("JSON 导出是合法 JSON", () => {

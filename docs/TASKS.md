@@ -88,6 +88,15 @@
   - [x] 章节排序：scheme-radar 在 schemes 前；final-decision 在责任边界前
   - [x] 新增 2 条 builder 测试（chart 章节存在 + 哨兵解析）
   - [x] 18 文件 / 141 测试全过；lint / typecheck / build 全部通过
+- [x] **报告渲染修正 — 删除封面页 / SVG 块透传 / 风险分级表渲染**
+  - [x] 删除封面页：cover 段移除，改为顶部内联 `<header class="report-head">`
+  - [x] 移除 `section.cover` CSS，新增 `.report-head` 样式（左侧橙边 + 3 列元数据网格）
+  - [x] Markdown 渲染器：`#`/`##`/`###`/`####` 全部识别为标题；新增有序列表与表格识别
+  - [x] 关键修复：新增"原始 HTML 块透传"模式，SVG / figure / table 等块级标签原样输出，不再被 `<p>` 包裹
+  - [x] `inlineMd` 改为先转义后替换，避免 XSS
+  - [x] 新增 2 条测试：风险分级 markdown 表渲染为 `<table class="md-table">`；封面页已删除
+  - [x] 现有 chart 渲染测试增加 SVG 块透传断言（polygon / line / bar-row 不被 `<p>` 包裹）
+  - [x] 18 文件 / **143** 测试全过；lint / typecheck / build 全部通过
 - [x] **Workflow 页面 Phase 3 三项可视化能力落地**
   - [x] `useWorkflowStream` Hook（原生 `fetch + ReadableStream` SSE；解析 `meta`/`workflow.event`/`workflow.summary`/`workflow.failed` 四种帧）
   - [x] `applyEventsToSteps` 纯函数：把 `step.started` / `step.completed` / `review.blocked` / `workflow.completed|failed|cancelled` 增量映射到节点状态
@@ -205,6 +214,15 @@
   - [x] 章节排序：scheme-radar 在 schemes 前；final-decision 在责任边界前
   - [x] 新增 2 条 builder 测试（chart 章节存在 + 哨兵解析）
   - [x] 18 文件 / 141 测试全过；lint / typecheck / build 全部通过
+- [x] **报告渲染修正 — 删除封面页 / SVG 块透传 / 风险分级表渲染**
+  - [x] 删除封面页：cover 段移除，改为顶部内联 `<header class="report-head">`
+  - [x] 移除 `section.cover` CSS，新增 `.report-head` 样式（左侧橙边 + 3 列元数据网格）
+  - [x] Markdown 渲染器：`#`/`##`/`###`/`####` 全部识别为标题；新增有序列表与表格识别
+  - [x] 关键修复：新增"原始 HTML 块透传"模式，SVG / figure / table 等块级标签原样输出，不再被 `<p>` 包裹
+  - [x] `inlineMd` 改为先转义后替换，避免 XSS
+  - [x] 新增 2 条测试：风险分级 markdown 表渲染为 `<table class="md-table">`；封面页已删除
+  - [x] 现有 chart 渲染测试增加 SVG 块透传断言（polygon / line / bar-row 不被 `<p>` 包裹）
+  - [x] 18 文件 / **143** 测试全过；lint / typecheck / build 全部通过
 
 ### 文档
 

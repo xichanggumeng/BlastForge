@@ -37,6 +37,23 @@
   - `HTML 导出解析 chart 哨兵并生成 SVG 雷达 / 柱状 / 热力`
 - 测试：18 文件 / 141 测试全过；lint / typecheck / build 全部通过。
 
+### 2026-07-04 追加：报告渲染修正 — 删除封面页 / SVG 块透传 / 风险分级表渲染
+
+- **删除封面页**：原 `<section class="cover">` 全屏橙红渐变封面被替换为顶部内联 `<header class="report-head">`（不强制换页，不占一整页）。`section.cover` 相关 CSS 全部移除，新增 `.report-head`（左侧橙边 + 3 列元数据网格）。
+- **Markdown 渲染器增强**（`renderMarkdownLite`）：
+  - 新增 `## / ### / ####` 全部识别：`#` → h2，`##` → h3，`###` → h4，`####` → h5。
+  - 新增 `1.` 有序列表、`-` / `*` 无序列表、表格 `| ... |`。
+  - **关键修复**：增加"原始 HTML 块透传"模式 —— 当一行以 `<svg>` / `<figure>` / `<table>` / `<aside>` / `<section>` / `<article>` / `<header>` / `<footer>` / `<details>` / `<blockquote>` / `<pre>` 块级标签开头时，进入"原样透传"，后续每一行直接写入 HTML 输出，直到对应闭标签让深度归零。这样 SVG 多边形 / 雷达轴线 / 柱状单元等内联标签就不再被 `<p>...</p>` 包裹，PDF 与 HTML 渲染都正确显示。
+  - `inlineMd` 改为先做 HTML 转义再做 `**bold**` / `\`code\`` 替换，避免 XSS。
+- **新增测试**（builder.test.ts +2）：
+  - `风险分级章节的 markdown 表格被渲染为 <table class="md-table">`
+  - `封面页已删除，报告头部改为 report-head`
+- 现有 `HTML 导出解析 chart 哨兵并生成 SVG 雷达 / 柱状 / 热力` 测试增加 SVG 块透传断言：
+  - `<p>[^<]*<polygon` 不能出现（多边形不被包在 p 里）
+  - `<p>[^<]*<line class="radar` 不能出现（雷达轴线不被包在 p 里）
+  - `<p>[^<]*<div class="bar-row` 不能出现（柱状行不被包在 p 里）
+- 测试：18 文件 / **143** 测试全过（原 141 + 新 2）；lint / typecheck / build 全部通过。
+
 ### 2026-07-04 追加：Workflow Phase 3 强化
 
 - `useWorkflowStream` Hook（`fetch + ReadableStream` SSE；`processLine` 解析四类帧）

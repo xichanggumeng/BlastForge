@@ -215,7 +215,7 @@ export function exportHTML(report: Report): string {
   const schemesHtml = renderSchemesSectionForHtml(recommended, alternatives, riskSchemes);
 
   const sectionsHtml = report.sections
-    .filter((s) => s.key !== "schemes" && s.key !== "citations")
+    .filter((s) => s.key !== "schemes" && s.key !== "citations" && s.key !== "cover")
     .map((s) => renderReportSectionHtml(s))
     .join("");
 
@@ -303,7 +303,7 @@ export function exportHTML(report: Report): string {
   }
   @media print {
     body { font-size: 11pt; }
-    .no-print, .report-section.cover { break-after: page; }
+    .no-print { break-after: page; }
     .report-section { break-inside: avoid; page-break-inside: avoid; }
     h1, h2, h3 { page-break-after: avoid; }
   }
@@ -323,85 +323,26 @@ export function exportHTML(report: Report): string {
   pre { white-space: pre-wrap; font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 10pt; color: var(--fg); }
   .muted { color: var(--muted); font-size: 10pt; }
 
-  /* ===== 封面 ===== */
-  section.cover {
-    text-align: center;
-    padding: 36px 24px 24px;
+  /* ===== 报告头部（替代封面） ===== */
+  .report-head {
+    padding: 18px 22px 16px;
+    margin: 0 0 18px;
     border: 1px solid var(--border-strong);
     border-radius: 12px;
-    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 60%);
-    page-break-after: always;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 70%);
+    border-left: 5px solid var(--accent);
   }
-  section.cover .brand-eyebrow {
-    text-transform: uppercase;
-    letter-spacing: 0.32em;
-    font-size: 9pt;
-    color: var(--muted);
-    margin-bottom: 16px;
-  }
-  section.cover h1 {
-    margin: 6px 0 18px;
-    font-size: 28pt;
-    color: var(--accent);
-    letter-spacing: 0.04em;
-  }
-  section.cover .tagline {
-    margin: 0 0 26px;
-    font-size: 12pt;
-    color: var(--fg-soft);
-  }
-  section.cover .meta-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 20px;
-    text-align: left;
-    margin: 0 auto 22px;
-    max-width: 480px;
-  }
-  section.cover .meta-grid > div {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.7);
-  }
-  section.cover .meta-grid .label {
-    font-size: 9pt;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: var(--muted);
-  }
-  section.cover .meta-grid .value {
-    font-size: 11pt;
-    color: var(--fg);
-    font-weight: 600;
-  }
-  section.cover .badge-row {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  section.cover .badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--border-strong);
-    font-size: 10pt;
-  }
-  section.cover .badge.ok { background: #ecfdf5; color: var(--success); border-color: #6ee7b7; }
-  section.cover .badge.warn { background: #fff7ed; color: var(--warning); border-color: #fdba74; }
-  section.cover .badge.replay { background: #fef2f2; color: var(--danger); border-color: #fca5a5; }
-  section.cover .footer-note {
-    margin-top: 26px;
-    font-size: 9pt;
-    color: var(--muted);
-    border-top: 1px dashed var(--border-strong);
-    padding-top: 12px;
-  }
+  .report-head h1 { margin: 0 0 6px; font-size: 20pt; color: var(--accent); letter-spacing: 0.02em; }
+  .report-head .tagline { margin: 0 0 10px; font-size: 10.5pt; color: var(--fg-soft); }
+  .report-head .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 14px; margin: 0; }
+  .report-head .meta-grid > div { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255, 255, 255, 0.75); }
+  .report-head .meta-grid .label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+  .report-head .meta-grid .value { font-size: 10pt; color: var(--fg); font-weight: 600; }
+  .report-head .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+  .report-head .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border-strong); font-size: 9pt; }
+  .report-head .badge.ok { background: #ecfdf5; color: var(--success); border-color: #6ee7b7; }
+  .report-head .badge.warn { background: #fff7ed; color: var(--warning); border-color: #fdba74; }
+  .report-head .badge.replay { background: #fef2f2; color: var(--danger); border-color: #fca5a5; }
 
   /* ===== 普通章节 ===== */
   main { padding: 0 4px; }
@@ -480,6 +421,16 @@ export function exportHTML(report: Report): string {
   /* ===== 其它 ===== */
   ul { padding-left: 18px; }
   li { margin: 3px 0; }
+  p { margin: 6px 0 8px; }
+  h3 { font-size: 13pt; margin: 14px 0 6px; color: var(--fg-soft); }
+  h4 { font-size: 12pt; margin: 12px 0 4px; color: var(--fg-soft); }
+  h5 { font-size: 11pt; margin: 10px 0 4px; color: var(--fg-soft); }
+
+  /* Markdown 表格 */
+  .md-table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.5pt; }
+  .md-table th, .md-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  .md-table thead th { background: var(--bg-soft); font-weight: 700; color: var(--fg-soft); }
+  .md-table tbody tr:nth-child(odd) { background: rgba(0, 0, 0, 0.012); }
 
   /* ===== 图表容器 ===== */
   .chart-figure { margin: 10px 0 4px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg-soft); }
@@ -536,8 +487,8 @@ export function exportHTML(report: Report): string {
 </style>
 </head>
 <body>
-  <section class="cover report-section" data-key="cover">
-    <div class="brand-eyebrow">BlastForge Demo · 工程规划报告</div>
+  <header class="report-head">
+    <div class="brand-eyebrow" style="text-transform:uppercase; letter-spacing:0.32em; font-size:8pt; color:var(--muted); margin-bottom:6px;">BlastForge Demo · 工程规划报告</div>
     <h1>${escapeHtml(report.scenarioName)}</h1>
     <p class="tagline">由多 Agent 协作、RAG 检索与人工复核生成的爆破参数规划与方案对比报告。</p>
     <div class="badge-row">
@@ -552,8 +503,7 @@ export function exportHTML(report: Report): string {
       <div><span class="label">引用条数</span><span class="value">${report.citations.length} 条</span></div>
       <div><span class="label">章节数</span><span class="value">${report.sections.length} 个</span></div>
     </div>
-    <p class="footer-note">本报告由 BlastForge Demo 自动生成；不构成正式工程设计文件；现场决策必须以现行规范与具备资质人员的签字为准。</p>
-  </section>
+  </header>
 
   <main>
     ${sectionsHtml}
@@ -575,40 +525,169 @@ export function exportHTML(report: Report): string {
 }
 
 function renderMarkdownLite(md: string): string {
-  // 极简 Markdown 渲染：只覆盖 ## / ### / - / **。避免引入 markdown 库以保持轻量。
+  // 极简 Markdown 渲染：覆盖 ## / ### / #### / - / 1. / 表格 / **粗体** / `code` / 原始 HTML 块（<figure>/<svg>/<table> 等）。
+  // 避免引入 markdown 库以保持轻量。
   const lines = md.split("\n");
   const out: string[] = [];
   let inList = false;
-  for (const raw of lines) {
-    const line = raw.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    if (line.startsWith("## ")) {
-      if (inList) {
-        out.push("</ul>");
-        inList = false;
+  let listKind: "ul" | "ol" | null = null;
+  let paragraphBuf: string[] = [];
+  let inHtmlBlock = false;
+  let htmlBlockLines: string[] = [];
+  let htmlBlockDepth = 0;
+  let htmlBlockTag = "";
+
+  const flushParagraph = (): void => {
+    if (paragraphBuf.length === 0) return;
+    out.push(`<p>${inlineMd(paragraphBuf.join(" "))}</p>`);
+    paragraphBuf = [];
+  };
+  const closeList = (): void => {
+    if (inList) {
+      out.push(`</${listKind}>`);
+      inList = false;
+      listKind = null;
+    }
+  };
+  const flushHtmlBlock = (): void => {
+    out.push(htmlBlockLines.join("\n"));
+    htmlBlockLines = [];
+    inHtmlBlock = false;
+    htmlBlockDepth = 0;
+    htmlBlockTag = "";
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const trimmed = line.trim();
+
+    // 当前已经在某个 HTML 块内：把每一行原样累积，直到匹配的开 / 闭标签深度归零。
+    if (inHtmlBlock) {
+      htmlBlockLines.push(line);
+      if (new RegExp(`<${htmlBlockTag}\\b`, "i").test(line)) htmlBlockDepth += 1;
+      if (new RegExp(`</${htmlBlockTag}\\s*>`, "i").test(line)) htmlBlockDepth -= 1;
+      if (htmlBlockDepth <= 0) {
+        flushHtmlBlock();
       }
-      out.push(`<h3>${line.slice(3)}</h3>`);
-    } else if (line.startsWith("- ")) {
-      if (!inList) {
+      continue;
+    }
+
+    // 表格：以 `| ... |` 起
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      closeList();
+      flushParagraph();
+      const tableLines: string[] = [line];
+      for (let j = i + 1; j < lines.length; j += 1) {
+        const next = lines[j] ?? "";
+        const t = next.trim();
+        if (t.startsWith("|") && t.endsWith("|")) {
+          tableLines.push(next);
+        } else {
+          break;
+        }
+      }
+      out.push(renderTableLite(tableLines));
+      i += tableLines.length - 1;
+      continue;
+    }
+
+    // 标题（#### / ### / ##）
+    const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
+    if (headingMatch) {
+      closeList();
+      flushParagraph();
+      const level = headingMatch[1]!.length + 1;
+      const text = inlineMd(headingMatch[2]!);
+      out.push(`<h${level}>${text}</h${level}>`);
+      continue;
+    }
+
+    // 无序列表
+    if (/^\s*[-*]\s+/.test(line)) {
+      flushParagraph();
+      if (!inList || listKind !== "ul") {
+        closeList();
         out.push("<ul>");
         inList = true;
+        listKind = "ul";
       }
-      out.push(`<li>${line.slice(2)}</li>`);
-    } else if (line.trim() === "") {
-      if (inList) {
-        out.push("</ul>");
-        inList = false;
-      }
-      out.push("");
-    } else {
-      if (inList) {
-        out.push("</ul>");
-        inList = false;
-      }
-      out.push(`<p>${line}</p>`);
+      out.push(`<li>${inlineMd(line.replace(/^\s*[-*]\s+/, ""))}</li>`);
+      continue;
     }
+
+    // 有序列表
+    if (/^\s*\d+\.\s+/.test(line)) {
+      flushParagraph();
+      if (!inList || listKind !== "ol") {
+        closeList();
+        out.push("<ol>");
+        inList = true;
+        listKind = "ol";
+      }
+      out.push(`<li>${inlineMd(line.replace(/^\s*\d+\.\s+/, ""))}</li>`);
+      continue;
+    }
+
+    // 原始 HTML 块：以块级标签开头的行（如 <svg> / <figure> / <table> / <aside> 等）。
+    // 进入"原始 HTML 透传"模式，直到匹配标签的闭标签把深度归零。
+    if (/^<(figure|svg|table|aside|section|article|header|footer|details|blockquote|pre)\b/i.test(trimmed)) {
+      closeList();
+      flushParagraph();
+      const tagMatch = /^<([a-z][a-z0-9]*)/i.exec(trimmed);
+      const tag = (tagMatch?.[1] ?? "").toLowerCase();
+      htmlBlockTag = tag;
+      htmlBlockDepth = 1;
+      htmlBlockLines = [line];
+      inHtmlBlock = true;
+      // 自闭合标签直接关闭
+      if (/^<[a-z][a-z0-9-]*[^<>]*\/>\s*$/i.test(trimmed)) {
+        flushHtmlBlock();
+      }
+      continue;
+    }
+
+    // 空行
+    if (trimmed === "") {
+      closeList();
+      flushParagraph();
+      continue;
+    }
+
+    // 普通段落
+    closeList();
+    paragraphBuf.push(line);
   }
-  if (inList) out.push("</ul>");
+  closeList();
+  flushParagraph();
+  if (inHtmlBlock) flushHtmlBlock();
   return out.join("\n");
+}
+
+function inlineMd(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderTableLite(tableLines: ReadonlyArray<string>): string {
+  // 期望：行 0 = 表头；行 1 = `| --- |` 分隔（可带对齐符号，可忽略）；其余 = 数据行。
+  if (tableLines.length < 2) return "";
+  const splitRow = (row: string): string[] =>
+    row
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((c) => c.trim());
+  const head = splitRow(tableLines[0]!).map((c) => `<th>${inlineMd(c)}</th>`).join("");
+  const bodyRows = tableLines.slice(2).map((row) => {
+    const cells = splitRow(row).map((c) => `<td>${inlineMd(c)}</td>`).join("");
+    return `<tr>${cells}</tr>`;
+  });
+  return `<table class="md-table"><thead><tr>${head}</tr></thead><tbody>${bodyRows.join("")}</tbody></table>`;
 }
 
 function escapeHtml(value: string): string {
