@@ -27,19 +27,19 @@ const STORAGE_KEY = "blastforge.theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredMode(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw === "light" || raw === "dark" || raw === "system") return raw;
   } catch {
     /* noop */
   }
-  return "dark";
+  return "light";
 }
 
 function resolveTheme(mode: ThemeMode): ResolvedTheme {
   if (mode !== "system") return mode;
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
@@ -49,8 +49,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Start with a stable SSR-safe value; the inline ThemeScript sets the
   // visible theme before hydration, so the first paint matches the user's
   // stored choice without producing a React hydration mismatch.
-  const [mode, setModeState] = useState<ThemeMode>("dark");
-  const [resolved, setResolved] = useState<ResolvedTheme>("dark");
+  const [mode, setModeState] = useState<ThemeMode>("light");
+  const [resolved, setResolved] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
     // Hydrate from localStorage after mount. The inline ThemeScript already
@@ -120,8 +120,8 @@ export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
     return {
-      mode: "dark",
-      resolved: "dark",
+      mode: "light",
+      resolved: "light",
       setMode: () => undefined,
       toggle: () => undefined,
     };

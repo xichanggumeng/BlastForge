@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { PresentationShell } from "@/components/presentation/presentation-shell";
 import { ThemeProvider } from "@/components/system/theme-provider";
 
 export const metadata: Metadata = {
@@ -14,7 +15,9 @@ export default function WorkspaceLayout({
 }) {
   return (
     <ThemeProvider>
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        <PresentationShell>{children}</PresentationShell>
+      </AppShell>
     </ThemeProvider>
   );
 }

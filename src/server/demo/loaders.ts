@@ -12,6 +12,9 @@ import {
   DEMO_WORKFLOW_RUNS,
   DEMO_WORKFLOW_STEPS,
 } from "./seed";
+import { loadDashboardSnapshot } from "./dashboard";
+
+export { loadDashboardSnapshot };
 
 export function loadProjects() {
   return DEMO_PROJECTS;

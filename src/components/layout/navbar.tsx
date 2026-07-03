@@ -50,12 +50,12 @@ export function Navbar() {
         >
           <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border border-border bg-surface shadow-sm">
             <Image
-              src={BRAND.logo.src}
-              alt={BRAND.logo.alt}
-              width={BRAND.logo.width}
-              height={BRAND.logo.height}
+              src={BRAND.icon.src}
+              alt={BRAND.icon.alt}
+              width={BRAND.icon.width}
+              height={BRAND.icon.height}
               priority
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
             />
           </span>
           <span className="flex flex-col leading-tight">

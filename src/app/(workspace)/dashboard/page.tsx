@@ -4,11 +4,28 @@ import { PageHeader } from "@/components/feedback/page-header";
 import { MetricCard } from "@/components/feedback/metric-card";
 import { SectionHeader } from "@/components/feedback/section-header";
 import { StatusBadge } from "@/components/feedback/status-badge";
-import { RiskBadge } from "@/components/feedback/risk-badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkspaceGrid, WorkspacePage } from "@/components/layout/workspace-page";
+import {
+  AgentStageChart,
+  RiskDistributionChart,
+  TaskTrendChart,
+} from "@/components/dashboard/charts/dashboard-charts";
+import { DashboardAgentActivityPanel } from "@/components/dashboard/dashboard-agent-activity";
+import { DashboardCurrentProject } from "@/components/dashboard/dashboard-current-project";
+import { DashboardKnowledgeStrip } from "@/components/dashboard/dashboard-knowledge-strip";
+import { DashboardPendingReview } from "@/components/dashboard/dashboard-pending-review";
+import { DashboardRecentReports } from "@/components/dashboard/dashboard-recent-reports";
+import { DashboardRecentTasks } from "@/components/dashboard/dashboard-recent-tasks";
+import { DashboardRiskAlerts } from "@/components/dashboard/dashboard-risk-alerts";
+import { CountUp } from "@/components/motion/count-up";
+import { RevealOnScroll } from "@/components/motion/reveal-on-scroll";
+import { PresentationLauncher } from "@/components/presentation/presentation-toggle";
+import {
+  loadDashboardMetrics,
+  loadDashboardSnapshot,
+  loadProjects,
+} from "@/server/demo/loaders";
 import { formatDateTime } from "@/lib/format";
-import { loadDashboardMetrics, loadProjects } from "@/server/demo/loaders";
 
 export const metadata = {
   title: "总览",
@@ -24,22 +41,25 @@ const ICONS = {
 export default function DashboardPage() {
   const metrics = loadDashboardMetrics();
   const projects = loadProjects();
+  const snapshot = loadDashboardSnapshot();
+  const currentProject = projects[0];
 
   return (
     <WorkspacePage>
       <PageHeader
         eyebrow="智能驾驶舱"
         title="项目、Agent 与风险全景"
-        description="Phase 1 阶段呈现当前 Demo 预设项目的运行状态、Agent 池能力与待处理风险。下个阶段将接入实时 Run 与知识引用。"
+        description="基于 Phase 2 集中 Demo 数据，展示当前项目、最近 Run、Agent 池、人工复核与风险提醒。图表按需加载，不影响首屏。"
         icon={Activity}
         meta={
           <>
             <StatusBadge status="running" />
             <span className="text-xs text-muted-foreground">
-              最近更新 · {formatDateTime(projects[0]?.updatedAt)}
+              最近更新 · {formatDateTime(currentProject?.updatedAt)}
             </span>
           </>
         }
+        actions={<PresentationLauncher />}
       />
 
       <section
@@ -49,70 +69,124 @@ export default function DashboardPage() {
         <h2 id="dashboard-metrics" className="sr-only">
           关键指标
         </h2>
-        <WorkspaceGrid columns={4}>
-          {metrics.map((metric) => {
-            const Icon = ICONS[metric.key as keyof typeof ICONS];
-            return (
-              <MetricCard
-                key={metric.key}
-                label={metric.label}
-                value={metric.value}
-                delta={metric.delta}
-                hint={metric.hint}
-                icon={Icon}
-                tone={metric.tone ?? "neutral"}
-              />
-            );
-          })}
-        </WorkspaceGrid>
+        <RevealOnScroll>
+          <WorkspaceGrid columns={4}>
+            {metrics.map((metric) => {
+              const Icon = ICONS[metric.key as keyof typeof ICONS];
+              return (
+                <MetricCard
+                  key={metric.key}
+                  label={metric.label}
+                  value={metric.value}
+                  delta={metric.delta}
+                  hint={metric.hint}
+                  icon={Icon}
+                  tone={metric.tone ?? "neutral"}
+                />
+              );
+            })}
+          </WorkspaceGrid>
+        </RevealOnScroll>
       </section>
 
-      <section aria-labelledby="dashboard-projects" className="flex flex-col gap-4">
-        <SectionHeader
-          title="预设项目"
-          description="Demo 默认装载的 3 个工程场景，覆盖常规、复杂与高风险三类。"
+      {currentProject ? (
+        <DashboardCurrentProject
+          project={currentProject}
+          snapshot={snapshot}
         />
-        <WorkspaceGrid columns={3}>
-          {projects.map((project) => (
-            <Card key={project.id} tone="elevated" padding="lg">
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle>{project.name}</CardTitle>
-                  <RiskBadge level={project.risk} />
-                </div>
-                <CardDescription>{project.site}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{project.summary}</p>
-                <div className="mt-3 flex flex-col gap-2 text-xs text-muted-foreground">
-                  <div className="flex items-center justify-between">
-                    <span>运行进度</span>
-                    <span className="tabular text-foreground">
-                      {Math.round(project.progress * 100)}%
-                    </span>
-                  </div>
-                  <div
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(project.progress * 100)}
-                    className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-                  >
-                    <div
-                      className="h-full bg-primary"
-                      style={{ width: `${Math.round(project.progress * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <StatusBadge status={project.status} />
-                <span>{formatDateTime(project.updatedAt)}</span>
-              </div>
-            </Card>
-          ))}
-        </WorkspaceGrid>
+      ) : null}
+
+      <section
+        aria-labelledby="dashboard-task-trend"
+        className="flex flex-col gap-4"
+      >
+        <SectionHeader
+          title="最近任务状态趋势"
+          description="过去 12 小时内 Run 数量、进入人工复核和高风险拦截的演化。"
+        />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <TaskTrendChart
+              labels={snapshot.taskTrend.labels}
+              series={snapshot.taskTrend.series}
+              title="Run 趋势 · 含复核与拦截"
+              description="按小时统计，可联动 Phase 3 Run 详情"
+              unit="次"
+              height={280}
+            />
+          </div>
+          <RiskDistributionChart
+            data={snapshot.riskDistribution}
+            title="方案风险分布"
+            description="低 / 中 / 高 / 待复核方案数量"
+          />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="dashboard-agent-stages"
+        className="flex flex-col gap-4"
+      >
+        <SectionHeader
+          title="Agent 阶段耗时"
+          description="对应当前 Run 中每个 Workflow 步骤的平均耗时，可识别耗时最长的 Agent。"
+        />
+        <AgentStageChart
+          data={snapshot.agentStages}
+          title="阶段耗时（毫秒）"
+          description="按 Workflow 步骤展示"
+          unit="ms"
+          height={280}
+        />
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DashboardRecentTasks tasks={snapshot.recentTasks} />
+        <DashboardPendingReview reviews={snapshot.pendingReviews} />
+      </div>
+
+      <DashboardAgentActivityPanel agents={snapshot.agentActivity} />
+
+      <DashboardKnowledgeStrip citations={snapshot.knowledgeCitations} />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DashboardRiskAlerts alerts={snapshot.riskAlerts} />
+        <DashboardRecentReports reports={snapshot.recentReports} />
+      </div>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader
+          title="驾驶舱关键指标"
+          description="所有数据由 `loadDashboardSnapshot` 提供，Phase 3 替换为 Server Action 时无需改动调用方签名。"
+        />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatHighlight label="完成度" value={snapshot.completionRatio * 100} suffix="%" />
+          <StatHighlight label="已批准方案" value={snapshot.approvedSchemes} />
+          <StatHighlight label="本周引用" value={snapshot.citationsThisWeek} />
+          <StatHighlight label="运行 Run" value={snapshot.counters.activeProjects} />
+        </div>
       </section>
     </WorkspacePage>
+  );
+}
+
+function StatHighlight({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface px-4 py-3">
+      <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="tabular text-2xl font-semibold leading-tight text-foreground">
+        <CountUp value={value} digits={0} suffix={suffix} durationMs={900} />
+      </span>
+    </div>
   );
 }

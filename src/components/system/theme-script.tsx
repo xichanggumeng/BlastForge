@@ -7,7 +7,7 @@ export const THEME_INIT_SCRIPT = `
 (function () {
   try {
     var raw = window.localStorage.getItem('${THEME_STORAGE_KEY}');
-    var mode = raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'dark';
+    var mode = raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'light';
     var resolved = mode === 'system'
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : mode;
@@ -15,7 +15,7 @@ export const THEME_INIT_SCRIPT = `
     root.dataset.theme = resolved;
     root.style.colorScheme = resolved;
   } catch (e) {
-    document.documentElement.dataset.theme = 'dark';
+    document.documentElement.dataset.theme = 'light';
   }
 })();
 `.trim();
