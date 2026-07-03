@@ -263,3 +263,29 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Workflow 视图专用动画 —— 必须放在全局 CSS 而非 styled-jsx,
+ * 否则 styled-jsx 会向 SSR HTML 注入 hash class,触发 React hydration mismatch。 */
+@keyframes wf-running-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--primary) 10%, transparent); }
+}
+.wf-step-running {
+  animation: wf-running-pulse 1.4s ease-in-out infinite;
+}
+@keyframes wf-blocked-attention {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 50%, transparent); }
+  30% { box-shadow: 0 0 0 8px color-mix(in oklch, var(--danger) 15%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 0%, transparent); }
+}
+.wf-step-blocked-attention {
+  animation: wf-blocked-attention 1.2s ease-out 1;
+}
+@keyframes wf-edge-flow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -20; }
+}
+.react-flow__edge.animated path,
+.react-flow__edge path[stroke-dasharray] {
+  animation: wf-edge-flow 1.2s linear infinite;
+}

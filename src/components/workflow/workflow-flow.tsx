@@ -63,21 +63,6 @@ import type { KnowledgeCitation } from '@/modules/knowledge/domain';
 
 import { applyEventsToSteps } from './apply-events-to-steps';
 
-/* ---------- Reduced Motion Hook ---------- */
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const handler = (e: MediaQueryListEvent): void => setReduced(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return reduced;
-}
-
 /* ---------- 节点自定义 ---------- */
 
 interface StepNodeData extends Record<string, unknown> {
@@ -96,7 +81,6 @@ interface StepNodeData extends Record<string, unknown> {
 
 function StepNode({ data, selected }: NodeProps<Node<StepNodeData>>) {
   const status = data.status;
-  const reducedMotion = usePrefersReducedMotion();
   const isRunning = status === 'running';
   const isBlocked = status === 'blocked';
   const isFailed = status === 'failed';
@@ -133,10 +117,10 @@ function StepNode({ data, selected }: NodeProps<Node<StepNodeData>>) {
             ? Check
             : CircleDashed;
 
-  // 事件驱动的运行脉冲（仅在 reduced-motion 关闭时启用动画）
-  const pulseActive = isRunning && !reducedMotion;
-  // blocked 节点的"阻断注意力"动画，仅在刚刚发生阻断时短暂显示
-  const blockAttention = isBlocked && data.attention && !reducedMotion;
+  // running 节点的脉冲 + blocked 节点的"刚刚被阻断"注意力动画
+  // 动画类名定义在全局 globals.css 中，并由 prefers-reduced-motion 媒体查询自动降级
+  const showRunningPulse = isRunning;
+  const showBlockedAttention = isBlocked && Boolean(data.attention);
 
   return (
     <div
@@ -146,19 +130,19 @@ function StepNode({ data, selected }: NodeProps<Node<StepNodeData>>) {
         'flex min-w-[180px] max-w-[220px] flex-col gap-1 rounded-lg border bg-surface px-3 py-2 text-left shadow-sm transition-colors',
         toneClass,
         selected && 'ring-2 ring-primary/60',
-        pulseActive && 'wf-step-running',
-        blockAttention && 'wf-step-blocked-attention',
+        showRunningPulse && 'wf-step-running',
+        showBlockedAttention && 'wf-step-blocked-attention',
       )}
     >
       <div className="flex items-center gap-2">
         <span
           className={cn(
             'inline-flex h-6 w-6 items-center justify-center rounded-md border bg-surface/70',
-            isRunning && !reducedMotion && 'animate-pulse',
+            isRunning && 'animate-pulse',
           )}
         >
           <Icon
-            className={cn('h-3.5 w-3.5', isRunning && !reducedMotion && 'animate-spin')}
+            className={cn('h-3.5 w-3.5', isRunning && 'animate-spin')}
             aria-hidden
           />
         </span>
@@ -416,39 +400,6 @@ export function WorkflowFlow({
 
   return (
     <ReactFlowProvider>
-      <style jsx global>{`
-        @keyframes wf-running-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent); }
-          50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--primary) 10%, transparent); }
-        }
-        .wf-step-running {
-          animation: wf-running-pulse 1.4s ease-in-out infinite;
-        }
-        @keyframes wf-blocked-attention {
-          0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 50%, transparent); }
-          30% { box-shadow: 0 0 0 8px color-mix(in oklch, var(--danger) 15%, transparent); }
-          100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 0%, transparent); }
-        }
-        .wf-step-blocked-attention {
-          animation: wf-blocked-attention 1.2s ease-out 1;
-        }
-        @keyframes wf-edge-flow {
-          0% { stroke-dashoffset: 0; }
-          100% { stroke-dashoffset: -20; }
-        }
-        .react-flow__edge.animated path,
-        .react-flow__edge path[stroke-dasharray] {
-          animation: wf-edge-flow 1.2s linear infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .wf-step-running,
-          .wf-step-blocked-attention,
-          .react-flow__edge.animated path,
-          .react-flow__edge path[stroke-dasharray] {
-            animation: none !important;
-          }
-        }
-      `}</style>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={run.replay ? 'warning' : 'primary'} size="sm">
