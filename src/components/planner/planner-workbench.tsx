@@ -323,11 +323,26 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
           visible={mobileStep === 4}
         >
           {run ? (
-            <SchemeDetailPanel
-              run={run}
-              scheme={selectedScheme}
-              citations={citations}
-            />
+            <div className="flex flex-col gap-4">
+              <SchemeDetailPanel
+                run={run}
+                scheme={selectedScheme}
+                citations={citations}
+              />
+              {/* 导出报告：移动端最后一步直接展示生成与下载入口（PDF/Markdown/JSON）。 */}
+              <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+                <SectionHeader
+                  title="导出报告"
+                  description="一键生成 Demo Run 报告，支持下载 PDF / Markdown / JSON。提交到服务端统一组装，避免本地数据漂移。"
+                />
+                <GenerateReportButton
+                  runId={'agentRunId' in state ? state.agentRunId : null}
+                  planningRun={run}
+                  citations={citations}
+                  replay={'replay' in state ? state.replay : false}
+                />
+              </div>
+            </div>
           ) : (
             <ErrorState title="尚未生成结果" description="请先回到第 3 步执行 Workflow。" />
           )}

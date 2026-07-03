@@ -9,11 +9,10 @@ import { NAV_ITEMS } from "@/config/nav";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { DemoModeBadge } from "@/components/feedback/demo-mode-badge";
 
 import { useSidebar } from "./sidebar-context";
 import { Sidebar } from "./sidebar";
-import { ThemeToggle } from "./theme-toggle";
+import { ThemeToggleCompact } from "./theme-toggle";
 
 const MOBILE_BOTTOM_KEYS = NAV_ITEMS.filter(
   (item) => item.key !== "workflow",
@@ -75,9 +74,9 @@ export function MobileNav() {
         <div className="flex-1 overflow-y-auto">
           <Sidebar variant="mobile" />
         </div>
-        <div className="flex items-center justify-between gap-2 border-t border-border p-3">
-          <DemoModeBadge />
-          <ThemeToggle />
+        {/* 移动端侧栏底部：仅放一个圆形图标主题切换按钮，无演示模式徽标。 */}
+        <div className="flex items-center justify-end gap-2 border-t border-border p-3">
+          <ThemeToggleCompact />
         </div>
       </aside>
     </dialog>
@@ -127,16 +126,26 @@ function BottomLink({
   icon: React.ComponentType<{ className?: string }>;
   active: boolean;
 }) {
+  const baseClass = cn(
+    "flex flex-col items-center justify-center gap-1 py-2 text-[11px] transition-colors",
+    active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+  );
+  /** active 状态使用 button 而不是 Link，避免对当前 URL 重复 navigation 导致"点了没反应"。 */
+  if (active) {
+    return (
+      <button
+        type="button"
+        aria-current="page"
+        aria-label={ariaLabel}
+        className={baseClass}
+      >
+        <Icon className={cn("h-5 w-5")} aria-hidden />
+        <span className="whitespace-nowrap">{label}</span>
+      </button>
+    );
+  }
   return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      aria-label={ariaLabel}
-      className={cn(
-        "flex flex-col items-center justify-center gap-1 py-2 text-[11px] transition-colors",
-        active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-      )}
-    >
+    <Link href={href} aria-label={ariaLabel} className={baseClass}>
       <Icon className={cn("h-5 w-5")} aria-hidden />
       <span className="whitespace-nowrap">{label}</span>
     </Link>

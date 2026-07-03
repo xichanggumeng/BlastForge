@@ -16,7 +16,7 @@ export function Navbar() {
 
   return (
     <header
-      className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:fixed lg:left-0 lg:right-0 lg:top-0 lg:px-6"
+      className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:px-6"
       role="banner"
     >
       <div className="flex flex-1 items-center gap-3">

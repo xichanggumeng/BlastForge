@@ -6,6 +6,35 @@ import { useTheme } from "@/components/system/theme-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
+/**
+ * 紧凑圆形主题切换按钮 —— 用于移动端 sidebar 底部。
+ * 一个圆圈，内部是图标，无字，点击在 light / dark 之间切换。
+ */
+export function ThemeToggleCompact({ className }: { className?: string }) {
+  const { resolved, toggle } = useTheme();
+  const isDark = resolved === "dark";
+  const nextLabel = isDark ? "切换为浅色主题" : "切换为深色主题";
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={toggle}
+      aria-label={nextLabel}
+      title={nextLabel}
+      className={cn(
+        "h-10 w-10 rounded-full border border-border bg-surface shadow-sm hover:bg-muted",
+        className,
+      )}
+    >
+      {isDark ? (
+        <Sun className="h-4 w-4" aria-hidden />
+      ) : (
+        <Moon className="h-4 w-4" aria-hidden />
+      )}
+    </Button>
+  );
+}
+
 export function ThemeToggle({ className }: { className?: string }) {
   const { mode, setMode } = useTheme();
   const label =

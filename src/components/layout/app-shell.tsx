@@ -33,10 +33,11 @@ function ShellInner({ children }: AppShellProps) {
   }, [setMobileOpen]);
 
   return (
-    <div className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground lg:h-screen lg:overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <Navbar />
       <MobileNav />
-      <div className="flex min-w-0 flex-1">
+      {/* min-h-0 让 flex row 子项能被父级高度约束，没有它 main 的 flex-1 无法触发 overflow-y-auto。 */}
+      <div className="flex min-h-0 min-w-0 flex-1">
         <aside
           aria-label="桌面侧栏"
           className={cn(
@@ -61,12 +62,15 @@ function ShellInner({ children }: AppShellProps) {
         <main
           id="main-content"
           className={cn(
-            // 桌面端：navbar/sidebar fixed 离开文档流，
-            //   - main 高度 = 100vh（与父容器 h-screen 一致），padding-top 让出 navbar
-            //   - main 左侧 placeholder div 已让出 sidebar 宽度
-            //   - main 自身 overflow-y-auto ⇒ 只有主容器滚动
-            // 移动端：保持原有行为（root 整页滚动，MobileBottomNav fixed）。
-            "relative min-w-0 flex-1 overflow-x-hidden pb-24 pt-0 lg:h-screen lg:overflow-y-auto lg:pb-10 lg:pt-14",
+            // 桌面端 + 移动端：navbar fixed (h-14) 离开文档流，
+            //   - main 顶部 pt-14 让出 navbar 高度
+            //   - main 左侧 placeholder div (lg: 才存在) 让出 sidebar 宽度
+            //   - 移动端 main 底部 pb-24 让出 MobileBottomNav 高度
+            //   - 桌面端 lg:pb-10 让出常规底部留白
+            //   - main 自身 overflow-y-auto + 父容器 h-screen ⇒ 只有主容器滚动
+            // min-h-0 必须存在，否则 flex item 的 min-height = auto，
+            // 内容过高时 main 高度被撑大，overflow-y-auto 不触发。
+            "relative min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-24 pt-14 lg:pb-10",
           )}
           tabIndex={-1}
         >
