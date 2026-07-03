@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Bot,
+  ClipboardCheck,
   FileText,
   LayoutDashboard,
   SlidersHorizontal,
@@ -14,6 +15,7 @@ export type NavKey =
   | "agents"
   | "workflow"
   | "knowledge"
+  | "approvals"
   | "reports";
 
 export interface NavItem {
@@ -73,6 +75,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     group: "primary",
   },
   {
+    key: "approvals",
+    href: "/approvals",
+    label: "人工复核",
+    shortLabel: "复核",
+    description: "等待确认的检查项与历史",
+    icon: ClipboardCheck,
+    group: "primary",
+  },
+  {
     key: "reports",
     href: "/reports",
     label: "报告中心",
@@ -84,5 +95,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
 ] as const;
 
 export const MOBILE_NAV_ITEMS: readonly NavItem[] = NAV_ITEMS.filter(
-  (item) => item.key !== "workflow",
+  (item) => item.key !== "workflow" && item.key !== "agents",
 );

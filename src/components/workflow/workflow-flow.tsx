@@ -51,6 +51,8 @@ import type {
   WorkflowEvent,
   FrontendTraceSummary,
 } from '@/modules/agent-runtime/core/contracts';
+import { CitationPanel } from '@/components/citations/citation-panel';
+import type { KnowledgeCitation } from '@/modules/knowledge/domain';
 
 /* ---------- 节点自定义 ---------- */
 
@@ -482,24 +484,13 @@ function StepDetailPanel({
       </div>
 
       <div>
-        <h4 className="text-xs font-semibold">引用 ({citations.length})</h4>
-        <ul className="mt-1 flex flex-col gap-1.5 text-xs">
-          {citations.length === 0 ? (
-            <li className="text-muted-foreground">无引用</li>
-          ) : (
-            citations.map((c) => (
-              <li key={c.id} className="rounded border border-border bg-surface px-2 py-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold">{c.documentTitle}</span>
-                  <Badge tone="outline" size="sm">
-                    {c.category}
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{c.excerpt}</p>
-              </li>
-            ))
-          )}
-        </ul>
+        <h4 className="mb-1 text-xs font-semibold">引用 ({citations.length})</h4>
+        <CitationPanel
+          citations={citations.map(toKnowledgeCitation)}
+          className="border-0 bg-transparent shadow-none"
+          title=""
+          defaultOpenFirst={citations.length > 0}
+        />
       </div>
 
       <div>
@@ -538,3 +529,42 @@ function StepDetailPanel({
 }
 
 export { ShieldCheck, PauseCircle };
+
+function toKnowledgeCitation(c: Citation): KnowledgeCitation {
+  const knownSourceTypes: ReadonlyArray<KnowledgeCitation["sourceType"]> = [
+    "knowledge",
+    "regulation",
+    "case",
+    "material",
+  ];
+  const sourceType = (
+    knownSourceTypes as ReadonlyArray<string>
+  ).includes(c.sourceType ?? "")
+    ? (c.sourceType as KnowledgeCitation["sourceType"])
+    : "knowledge";
+  const knownCategories: ReadonlyArray<KnowledgeCitation["category"]> = [
+    "explosive",
+    "water",
+    "environment",
+    "cost",
+    "risk-review",
+    "general",
+  ];
+  const category = (knownCategories as ReadonlyArray<string>).includes(c.category)
+    ? (c.category as KnowledgeCitation["category"])
+    : "general";
+  return {
+    id: c.id,
+    documentId: c.documentId,
+    documentTitle: c.documentTitle,
+    sourceType,
+    category,
+    ...(c.page !== undefined ? { page: c.page } : {}),
+    ...(c.section !== undefined ? { section: c.section } : {}),
+    excerpt: c.excerpt,
+    score: c.score,
+    matchedTokens: [...(c.matchedTokens ?? [])],
+    affectedConclusions: [...(c.affectedConclusions ?? [])],
+    usedByAgents: [...(c.usedByAgents ?? [])],
+  };
+}

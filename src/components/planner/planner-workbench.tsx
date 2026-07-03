@@ -58,6 +58,7 @@ import { PlannerChartTabs, type PlannerChartKey } from "./planner-chart-tabs";
 import { usePlanningExecution } from "./use-planning-execution";
 import { useAgentWorkflow } from "./use-agent-workflow";
 import { useSelectionStore, usePlannerUIStore } from "@/stores/planner-store";
+import { GenerateReportButton } from "@/components/reports/generate-report-button";
 
 interface PlannerWorkbenchProps {
   /** Server side, optional initial preset id from URL */
@@ -122,6 +123,8 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
   const setSelected = useSelectionStore((s) => s.setSelectedSchemeId);
   const mobileStep = usePlannerUIStore((s) => s.mobileStep);
   const setMobileStep = usePlannerUIStore((s) => s.setMobileStep);
+  /** Agent 模式下当前 Run 的引用；本地 Demo Planner 模式没有引用 */
+  const citations = useAgent ? agentExec.state.citations : undefined;
   const chart = usePlannerUIStore((s) => s.chart);
   const setChart = usePlannerUIStore((s) => s.setChart);
 
@@ -307,7 +310,11 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
           visible={mobileStep === 4}
         >
           {run ? (
-            <SchemeDetailPanel run={run} scheme={selectedScheme} />
+            <SchemeDetailPanel
+              run={run}
+              scheme={selectedScheme}
+              citations={citations}
+            />
           ) : (
             <ErrorState title="尚未生成结果" description="请先回到第 3 步执行 Workflow。" />
           )}
@@ -389,6 +396,8 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
             state={state}
             selectedScheme={selectedScheme}
             run={run}
+            citations={citations}
+            replay={'replay' in state ? state.replay : false}
           />
         </section>
       </div>
@@ -709,6 +718,8 @@ function RunSummarySidebar({
   state,
   selectedScheme,
   run,
+  citations,
+  replay,
 }: {
   state: {
     phase: string;
@@ -718,6 +729,8 @@ function RunSummarySidebar({
   };
   selectedScheme: Scheme | undefined;
   run: PlanningRun | null;
+  citations?: ReadonlyArray<import("@/modules/agent-runtime/core/contracts").Citation>;
+  replay?: boolean;
 }) {
   if (!run) {
     return (
@@ -773,10 +786,12 @@ function RunSummarySidebar({
             </Link>
           </Button>
         ) : null}
+        <GenerateReportButton runId={run?.id ?? null} replay={replay} />
       </Card>
       <SchemeDetailPanel
         run={state.run ?? run}
         scheme={selectedScheme}
+        citations={citations}
       />
     </>
   );

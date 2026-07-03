@@ -469,7 +469,7 @@ async function executeRetrieveStep(
     stepId,
     agentId: agent.id,
     now: () => Date.now(),
-  })) as { citations: ReadonlyArray<{ id: string; documentId: string; documentTitle: string; category: string; excerpt: string; score: number; page?: number; section?: string }> };
+  })) as { citations: ReadonlyArray<{ id: string; documentId: string; documentTitle: string; sourceType: string; category: string; excerpt: string; score: number; page?: number; section?: string; matchedTokens: ReadonlyArray<string>; usedByAgents: ReadonlyArray<string>; affectedConclusions: ReadonlyArray<string> }> };
   const callEnd = Date.now();
   emit("tool.completed", {
     toolCallId: callId,

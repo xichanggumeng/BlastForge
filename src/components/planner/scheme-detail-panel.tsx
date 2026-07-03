@@ -17,6 +17,7 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { RiskBadge } from "@/components/feedback/risk-badge";
+import { CitationPanel } from "@/components/citations/citation-panel";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -28,18 +29,23 @@ import {
   type RiskItem,
   type Scheme,
 } from "@/modules/parameter-planning/domain";
+import type { Citation } from "@/modules/agent-runtime/core/contracts";
+import type { KnowledgeCitation } from "@/modules/knowledge/domain";
 
 interface SchemeDetailPanelProps {
   run: PlanningRun;
   scheme: Scheme | undefined;
   /** 当前步骤选择（Mobile / Desktop 共用） */
   className?: string;
+  /** 来自 Agent Runtime 的引用列表（可在 Planner 中展示） */
+  citations?: ReadonlyArray<Citation>;
 }
 
 export function SchemeDetailPanel({
   run,
   scheme,
   className,
+  citations,
 }: SchemeDetailPanelProps) {
   return (
     <aside
@@ -55,6 +61,9 @@ export function SchemeDetailPanel({
           <PredictedParameterTable scheme={scheme} />
           <ReviewsBlock reviews={run.reviews} />
           <RisksBlock risks={run.risks} />
+          {citations && citations.length > 0 ? (
+            <CitationsBlock citations={citations} />
+          ) : null}
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
@@ -354,4 +363,61 @@ function Collapsible({
       {open ? children : null}
     </section>
   );
+}
+
+function CitationsBlock({ citations }: { citations: ReadonlyArray<Citation> }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <Collapsible
+      title={`知识引用（${citations.length}）`}
+      icon={WorkflowIcon}
+      open={open}
+      onToggle={() => setOpen((p) => !p)}
+    >
+      <CitationPanel
+        citations={citations.map(toKnowledgeCitation)}
+        title=""
+        className="border-0 bg-transparent shadow-none"
+      />
+    </Collapsible>
+  );
+}
+
+function toKnowledgeCitation(c: Citation): KnowledgeCitation {
+  const knownSourceTypes: ReadonlyArray<KnowledgeCitation["sourceType"]> = [
+    "knowledge",
+    "regulation",
+    "case",
+    "material",
+  ];
+  const sourceType = (knownSourceTypes as ReadonlyArray<string>).includes(
+    c.sourceType ?? "",
+  )
+    ? (c.sourceType as KnowledgeCitation["sourceType"])
+    : "knowledge";
+  const knownCategories: ReadonlyArray<KnowledgeCitation["category"]> = [
+    "explosive",
+    "water",
+    "environment",
+    "cost",
+    "risk-review",
+    "general",
+  ];
+  const category = (knownCategories as ReadonlyArray<string>).includes(c.category)
+    ? (c.category as KnowledgeCitation["category"])
+    : "general";
+  return {
+    id: c.id,
+    documentId: c.documentId,
+    documentTitle: c.documentTitle,
+    sourceType,
+    category,
+    ...(c.page !== undefined ? { page: c.page } : {}),
+    ...(c.section !== undefined ? { section: c.section } : {}),
+    excerpt: c.excerpt,
+    score: c.score,
+    matchedTokens: [...(c.matchedTokens ?? [])],
+    affectedConclusions: [...(c.affectedConclusions ?? [])],
+    usedByAgents: [...(c.usedByAgents ?? [])],
+  };
 }

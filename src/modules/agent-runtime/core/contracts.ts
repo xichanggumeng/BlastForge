@@ -161,11 +161,19 @@ export interface Citation {
   id: string;
   documentId: string;
   documentTitle: string;
+  /** 来源类型：knowledge / regulation / case / material */
+  sourceType?: string;
   category: string;
   page?: number;
   section?: string;
   excerpt: string;
   score: number;
+  /** 命中的检索 token（关键词 / 元数据提示词） */
+  matchedTokens?: ReadonlyArray<string>;
+  /** 影响的下游结论（参数名 / 方案 id / 风险码） */
+  affectedConclusions?: ReadonlyArray<string>;
+  /** 引用该文档的 Agent id 列表 */
+  usedByAgents?: ReadonlyArray<string>;
 }
 
 /* ---------- Tool Call ---------- */

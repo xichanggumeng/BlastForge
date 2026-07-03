@@ -13,9 +13,9 @@ import {
 } from '@/modules/agent-runtime/core/tool-registry';
 
 describe('Tool Registry', () => {
-  it('exposes 8 unique tools', () => {
+  it('exposes 9 unique tools', () => {
     const tools = listTools();
-    expect(tools.length).toBe(8);
+    expect(tools.length).toBe(9);
     const names = tools.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
   });
@@ -27,6 +27,7 @@ describe('Tool Registry', () => {
         'normalize_engineering_parameters',
         'search_knowledge',
         'run_rule_check',
+        'run_safety_review',
         'calculate_scheme_score',
         'analyze_parameter_sensitivity',
         'compare_schemes',
@@ -133,18 +134,22 @@ describe('Tool Registry', () => {
       id: 'cit-x',
       documentId: 'doc-x',
       documentTitle: '文档 X',
+      sourceType: 'knowledge',
       category: '规范',
       page: 1,
       section: '1',
       excerpt: '...',
       score: 0.5,
+      matchedTokens: [],
+      usedByAgents: [],
+      affectedConclusions: [],
     });
     expect(cit.id).toBe('cit-x');
     expect(cit.documentTitle).toBe('文档 X');
   });
 
-  it('knowledge index contains demo entries', () => {
-    const index = listKnowledgeIndex();
+  it('knowledge index contains demo entries', async () => {
+    const index = await listKnowledgeIndex();
     expect(index.length).toBeGreaterThan(0);
   });
 

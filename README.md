@@ -2,726 +2,222 @@
 
 > **AI 原生爆破工程辅助决策与协同平台**
 
-爆擎 BlastForge 面向爆破工程领域，将工程参数规划、专业知识检索、多 Agent 协同、风险复核和报告生成整合为一套可执行、可解释、可追踪的智能工作流。
+爆擎 BlastForge 面向爆破工程领域，将工程参数规划、专业知识检索、多 Agent 协同、风险复核、人工确认和报告生成整合为一套可执行、可解释、可追踪的智能工作流。
 
-当前仓库主要用于构建一套面向模拟商业会议展示的高完成度 Demo。项目不仅强调功能闭环，也强调现代化视觉设计、丰富动画交互、数据可视化和规范化代码结构。
+当前仓库交付的是面向模拟商业会议的高完成度 Demo：5 个核心模块（驾驶舱 / Planner / Workflow / Knowledge / Approvals / Reports）+ 3 个预设场景 + 完整 RAG + 完整人工复核 + 完整报告 + 打印 / PDF 导出。
 
 ---
 
 ## 项目定位
 
-BlastForge 不是普通聊天机器人，也不是传统 CRUD 后台。
-
-它希望展示的是一套完整的 AI 工程辅助执行体系：
-
 ```text
 工程条件输入
     ↓
-参数标准化
+参数标准化（确定性纯函数）
     ↓
-知识库检索
+知识库检索（RAG：Query Rewrite → Metadata Filter → Keyword + Vector Adapter → Merge → Rerank → Citation Packaging）
     ↓
-爆破参数预测与方案规划
+爆破参数预测与方案规划（多 Agent）
     ↓
 多方案生成与评分
     ↓
-安全复核
+安全复核（确定性规则）
     ↓
-人工确认
+人工确认（HITL，不可绕过）
     ↓
-报告生成与归档
+报告生成（来自同一 Planning Run）
 ```
 
 当前阶段重点验证：
 
-- 爆破工程参数预测与规划；
-- DeepSeek-V4-Pro 模型接入；
-- 多 Agent 协同；
-- Agentic Workflow；
-- RAG 知识检索与引用；
-- Tool Calling；
-- Human-in-the-loop 人工复核；
-- 高完成度商业展示体验。
+- 爆破工程参数预测与规划
+- DeepSeek-V4-Pro 模型接入
+- 多 Agent 协同 + Agentic Workflow
+- RAG 知识检索与可追踪引用
+- Tool Calling + 人工确认
+- 高完成度商业展示体验
 
 ---
 
-## 核心展示能力
+## 技术栈（与代码一致）
 
-### 智能参数规划
+| 领域 | 实际依赖 |
+| ---- | -------- |
+| 框架 | Next.js 16 App Router + React 19 |
+| 语言 | TypeScript（Strict） |
+| 样式 | Tailwind CSS v4（含 `@theme` Token） |
+| UI | 自研 `src/components/ui/*`（按 shadcn/ui 风格） |
+| 动画 | `motion@12` + `useReducedMotion` 兼容 |
+| 图表 | ECharts 6（`next/dynamic` 按需加载） |
+| 工作流 | React Flow (`@xyflow/react@12`) |
+| 表单 | React Hook Form + Zod |
+| 客户端状态 | Zustand |
+| 服务端 | Next.js Route Handlers + `server-only` |
+| 模型 | DeepSeek（OpenAI-compatible Provider Adapter） |
+| 检索 | 自研 RAG Pipeline（关键词 + 可选向量 Adapter） |
+| 测试 | Vitest 4 |
+| Lint / 类型 | ESLint + `tsc --noEmit` |
 
-根据工程类型、岩体条件、水文条件、环境约束、成本倾向和自然语言补充信息，生成：
-
-- 参数标准化结果；
-- 参数建议值或建议区间；
-- 推荐方案；
-- 备选方案；
-- 风险方案；
-- 多维评分；
-- 参数敏感性分析；
-- 人工重点确认清单。
-
-### Agent 工作台
-
-平台将不同职责拆分为多个专业 Agent：
-
-- Supervisor Agent；
-- Input Normalizer Agent；
-- Knowledge Retriever Agent；
-- Parameter Planner Agent；
-- Scheme Generator Agent；
-- Evaluation Agent；
-- Safety Reviewer Agent；
-- Report Agent。
-
-每个 Agent 都具备明确的输入、输出、工具权限、模型模式和执行边界。
-
-### Agentic Workflow
-
-系统通过可视化工作流展示任务执行过程：
-
-```text
-用户输入
-  → 参数标准化
-  → 场景识别
-  → 知识检索
-  → 参数规划
-  → 方案生成
-  → 评分计算
-  → 安全复核
-  → 人工确认
-  → 报告生成
-```
-
-每个节点可查看：
-
-- 当前状态；
-- Agent 输入；
-- Agent 输出；
-- Tool 调用；
-- 知识引用；
-- 执行耗时；
-- 风险与错误；
-- 人工审批状态。
-
-### RAG 知识库
-
-知识库用于整合：
-
-- 爆破工程课程资料；
-- 炸药性能说明；
-- 安全规范摘要；
-- 教学案例；
-- 脱敏工程案例；
-- 项目规则和产品资料。
-
-重要结论需要关联具体来源，避免只展示无法验证的模型生成结果。
-
-### 方案对比与可视化
-
-平台使用现代化可视化手段展示：
-
-- 多方案雷达图；
-- 参数对比柱状图；
-- 参数变化趋势；
-- 敏感性热力图；
-- 风险分布；
-- Agent 阶段耗时；
-- 工作流节点关系；
-- 知识引用关系。
-
-### 报告生成
-
-系统可基于最终确认结果生成结构化报告，包括：
-
-- 工程条件摘要；
-- 参数预测与规划结果；
-- 推荐及备选方案；
-- 多维评分；
-- 风险提示；
-- 知识引用；
-- Agent 执行摘要；
-- 人工复核意见。
+> 不引入：TanStack Query（暂不需要）、外部 PDF 渲染、Redis / Postgres（默认 In-Memory Repository，可平滑切换到 Drizzle / pgvector — Schema 蓝图已就位）。
 
 ---
 
-## Demo 页面规划
-
-| 页面 | 主要职责 |
-|---|---|
-| 品牌展示首页 | 展示产品定位、核心能力和动态 Agent 网络 |
-| 智能驾驶舱 | 展示项目、运行任务、风险和 Agent 状态 |
-| 参数规划工作台 | 录入参数、执行预测、查看 Agent 过程 |
-| 方案对比中心 | 对比推荐、备选和风险方案 |
-| Agent 工作台 | 查看 Agent 池、工具、Schema 和运行历史 |
-| Workflow 视图 | 可视化展示 Agentic Workflow 执行过程 |
-| 知识依据视图 | 查看文档来源、命中片段和引用关系 |
-| 报告预览 | 预览并导出最终报告 |
-
----
-
-## 技术栈
-
-### 核心框架
-
-- Next.js App Router
-- React
-- TypeScript
-- pnpm Workspace
-- Turborepo
-
-### UI 与交互
-
-- Tailwind CSS
-- shadcn/ui
-- Radix UI
-- Motion
-- GSAP，可选
-- Lucide React
-
-### 数据可视化
-
-- Apache ECharts
-- React Flow
-- TanStack Table
-
-### 状态与表单
-
-- TanStack Query
-- Zustand
-- React Hook Form
-- Zod
-
-### 数据与持久化
-
-- PostgreSQL
-- pgvector
-- Drizzle ORM
-
-### AI 与 Agent
-
-- AI SDK
-- `@ai-sdk/deepseek`
-- DeepSeek-V4-Pro
-- Agent Runtime
-- Tool Registry
-- Workflow Engine
-- Trace Recorder
-
-### 工程化
-
-- Vitest
-- Playwright
-- Biome
-- Sentry
-- Docker
-
----
-
-## 系统架构
-
-```mermaid
-flowchart TB
-    User[用户] --> Web[Next.js Web Demo]
-
-    Web --> Planner[参数规划模块]
-    Web --> AgentUI[Agent 工作台]
-    Web --> WorkflowUI[Workflow 可视化]
-    Web --> ReportUI[报告预览]
-
-    Planner --> Application[Application Use Cases]
-    AgentUI --> Application
-    WorkflowUI --> Application
-
-    Application --> Runtime[Agent Runtime]
-
-    Runtime --> Supervisor[Supervisor Agent]
-    Runtime --> Agents[专业 Agent 池]
-    Runtime --> Tools[Tool Registry]
-    Runtime --> Memory[Context / Memory]
-    Runtime --> Trace[Trace Recorder]
-
-    Supervisor --> Model[DeepSeek-V4-Pro]
-    Agents --> Model
-
-    Tools --> Rules[规则与评分工具]
-    Tools --> RAG[RAG 检索]
-    Tools --> Report[报告生成]
-    Tools --> Approval[人工确认]
-
-    RAG --> Vector[(PostgreSQL + pgvector)]
-    Application --> DB[(PostgreSQL)]
-```
-
----
-
-## Agent Runtime
-
-Agent Runtime 是项目的核心展示能力之一。
-
-```text
-Agent Runtime
-├─ Orchestrator
-├─ Agent Registry
-├─ Workflow Engine
-├─ Tool Registry
-├─ Context Builder
-├─ Memory Store
-├─ Guardrails
-├─ Human Approval
-└─ Trace Recorder
-```
-
-每个 Agent 必须声明：
-
-```ts
-interface AgentDefinition<TInput, TOutput> {
-  id: string
-  name: string
-  description: string
-  model: string
-  mode: 'thinking' | 'non-thinking'
-  inputSchema: ZodType<TInput>
-  outputSchema: ZodType<TOutput>
-  tools: string[]
-  maxSteps: number
-  timeoutMs: number
-  systemPromptVersion: string
-  requiresApproval: boolean
-}
-```
-
----
-
-## Tool Calling
-
-首期计划提供以下工具：
-
-```text
-normalize_engineering_parameters
-search_knowledge
-run_rule_check
-calculate_scheme_score
-analyze_parameter_sensitivity
-compare_schemes
-build_report_outline
-request_human_approval
-```
-
-工具设计原则：
-
-- 输入输出必须经过 Zod 校验；
-- 工具调用必须具备唯一 ID；
-- 计算类工具优先使用确定性代码；
-- 高风险写操作必须经过人工批准；
-- 工具结果必须可追踪、可重放；
-- 禁止模型调用任意 SQL、Shell 或现场控制指令。
-
----
-
-## 项目目录
-
-```text
-BlastForge/
-├─ apps/
-│  └─ web/                         # Next.js 全栈 Demo
-│
-├─ packages/
-│  ├─ ui/                          # 设计系统
-│  ├─ db/                          # Drizzle Schema 与查询
-│  ├─ contracts/                   # Zod、DTO、事件契约
-│  ├─ agent-core/                  # Agent Runtime
-│  ├─ agent-tools/                 # Tool 定义与实现
-│  ├─ knowledge/                   # RAG 与引用处理
-│  └─ config/                      # 公共工程配置
-│
-├─ docs/
-│  ├─ product/
-│  ├─ architecture/
-│  ├─ database/
-│  ├─ demo-script/
-│  └─ adr/
-│
-├─ design/
-│  ├─ wireframes/
-│  ├─ visual/
-│  └─ prototypes/
-│
-├─ assets/
-│  ├─ brand/
-│  ├─ images/
-│  ├─ demo-data/
-│  └─ knowledge/
-│
-├─ scripts/
-├─ docker/
-├─ pnpm-workspace.yaml
-├─ turbo.json
-└─ biome.json
-```
-
----
-
-## 本地开发
-
-> Phase 1 阶段仅完成视觉与骨架。本仓库使用 **npm**（仓库已锁定 `package-lock.json`），暂未启用 pnpm Workspace / Turborepo / 数据库。后续阶段将按设计规范在合理时机引入。
-
-### 环境要求
-
-- Node.js 22+
-- npm 10+
-
-PostgreSQL、pnpm Workspace、Turborepo、Docker 暂不在 Phase 1 范围内。
-
-### 安装依赖
+## 安装与运行
 
 ```bash
+# 1. 安装依赖（推荐 npm）
 npm install
-```
 
-### 配置环境变量
-
-复制环境变量示例：
-
-```bash
+# 2. 环境变量（可选，仅在希望走真实 DeepSeek 调用时配置）
 cp .env.example .env.local
-```
+# 按需填入 DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / DEEPSEEK_MODEL
 
-Windows PowerShell：
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-Phase 1 阶段仅需要两个公开变量（见 [`.env.example`](.env.example)）：
-
-```dotenv
-NEXT_PUBLIC_APP_NAME=BlastForge
-NEXT_PUBLIC_DEMO_MODE=true
-```
-
-禁止将任何真实密钥提交到仓库；后续阶段的服务端密钥将由专门的 Server-Side 环境变量承载，不会出现在 `NEXT_PUBLIC_*` 中。
-
-### 启动开发环境
-
-```bash
+# 3. 开发
 npm run dev
-```
+# 打开 http://localhost:3000
 
-默认访问：
-
-```text
-http://localhost:3000
-```
-
-可访问的主路由：
-
-```text
-/                  品牌首页
-/dashboard         总览（智能驾驶舱）
-/planner           参数规划
-/agents            Agent 工作台
-/workflow          Workflow 视图
-/knowledge         知识库
-/reports           报告中心
+# 4. 测试 / 类型检查 / 构建
+npm run lint      # ESLint
+npm run typecheck # tsc --noEmit
+npm run test      # Vitest 124 条
+npm run build     # Next.js 生产构建
 ```
 
 ---
 
-## 常用命令
+## 环境变量
+
+| 变量 | 用途 | 默认 |
+| ---- | ---- | ---- |
+| `DEMO_REPLAY_ENABLED` | 强制使用预录制 Run（即使有 Key） | `1`（缺 Key 时自动启用） |
+| `DEEPSEEK_API_KEY`    | DeepSeek 鉴权（仅服务端可读） | 未配置 → 自动 Replay |
+| `DEEPSEEK_BASE_URL`   | DeepSeek 兼容端点 | `https://api.deepseek.com/v1` |
+| `DEEPSEEK_MODEL`      | 主模型 | `deepseek-v4-pro` |
+| `AI_REQUEST_TIMEOUT_MS` | 单次 AI 请求超时 | `15000` |
+
+**安全约束**：
+
+- 严禁使用 `NEXT_PUBLIC_` 前缀暴露 Key。
+- 严禁把 `.env*` 加入提交。
+
+---
+
+## 数据库 / 持久化
+
+- **默认：In-Memory Repository**。`KnowledgeRepository` / `RunRepository` / `ReportRepository` / `HumanApprovalService` 全部为 demo 安全的内存实现。
+- **可选：Drizzle / PostgreSQL / pgvector**。`src/db/schema` 蓝图已就位，可平滑切换；向量检索通过 `VectorAdapter` 接入，缺 Embedding 服务时自动回退关键词。
+- 当前 Demo 不依赖任何外部数据库。
+
+---
+
+## Demo Replay（回放模式）
+
+Orchestrator 在 Provider 不可用 / 超时 / Schema 失败时会自动降级到预录制 Run：
+
+- 3 套预录制 Run 覆盖 `standard` / `complex` / `high-risk` 三个预设场景。
+- UX 不暴露「失败」状态；前端通过 `DemoModeBadge` 显示「回放模式」徽章。
+- 设置 `DEMO_REPLAY_ENABLED=1` 可强制走 Replay，适合网络隔离环境。
+
+---
+
+## 演示入口（5 个核心模块）
+
+| 路由 | 角色 |
+| ---- | ---- |
+| `/` | 品牌首页：Hero + 能力分布 + 9 节点 Agent 协作网络 |
+| `/dashboard` | 智能驾驶舱：项目 / Run 时间线 / Agent 池 / 风险 / 引用 / 演示模式入口 |
+| `/planner` | **参数规划**（含 Agent Workflow + 引用面板 + 报告生成按钮） |
+| `/workflow` | **Agentic Workflow 可视化**（React Flow + 节点详情 + 引用） |
+| `/knowledge` | **知识库**（8 文档 + 17 chunk + 检索测试 + Demo 上传入口） |
+| `/approvals` | **人工复核中心**（accept / modify / reject / return） |
+| `/reports` | **报告中心**（列表 + 预览 + 打印 PDF + Markdown + JSON） |
+| `/agents` | Agent / Tool 元数据 |
+
+演示顺序详见 [`docs/demo-script/`](./docs/demo-script/00-demo-overview.md)。
+
+---
+
+## 关键 API
+
+| 方法 | 路径 | 用途 |
+| ---- | ---- | ---- |
+| GET    | `/api/agent/runs` | 最近 Run 列表 |
+| POST   | `/api/agent/runs/stream` | SSE 启动 Workflow Run |
+| GET    | `/api/agent/runs/[id]` | 查询 Run |
+| DELETE | `/api/agent/runs/[id]` | 取消 Run |
+| POST   | `/api/agent/runs/[id]/convert` | 转为 `PlanningRun` |
+| GET    | `/api/agent/approvals` | 列出全部待复核 / 单 Run 快照 |
+| POST   | `/api/agent/approvals` | 改变状态（accept / modify / reject / return） |
+| GET    | `/api/reports?format=md\|json\|html` | 报告（导出支持 MD / JSON / HTML） |
+| POST   | `/api/reports` | 生成报告 |
+
+---
+
+## 测试
 
 ```bash
-npm run dev        # 启动开发服务器（Turbopack）
-npm run build      # 生产构建
-npm run start      # 启动生产服务器
-npm run lint       # ESLint 静态检查
+npm run test
 ```
 
-`typecheck`、`format`、`test`、`test:e2e`、`db:*` 等命令将在后续阶段补齐。`typecheck` 目前可通过 `npx tsc --noEmit` 直接调用。
+当前覆盖（Vitest 124/124）：
 
----
-
-## 项目结构
-
-```text
-src/
-├─ app/
-│  ├─ (workspace)/          # route group，共享 AppShell
-│  ├─ loading.tsx           # 全局 Loading
-│  ├─ error.tsx             # 全局 Error（含恢复动作）
-│  ├─ not-found.tsx         # 全局 NotFound
-│  ├─ layout.tsx            # 根 layout、metadata、ThemeScript
-│  ├─ globals.css           # 设计 Token 与 Tailwind v4 @theme
-│  └─ page.tsx              # 品牌首页 Hero
-├─ components/
-│  ├─ ui/                   # 基础件（Button、Badge、Surface、Skeleton、Separator）
-│  ├─ layout/               # AppShell、Navbar、Sidebar、MobileNav、ThemeToggle、ModulePreviewCard
-│  ├─ feedback/             # PageHeader、SectionHeader、MetricCard、Status/Risk/DemoMode Badge、Empty/Error/Loading
-│  └─ system/               # ThemeProvider、ThemeScript
-├─ config/                  # brand / nav / env-public 常量
-├─ lib/                     # cn、format、env 工具
-├─ modules/                 # 业务模块占位（Phase 2 起填充）
-├─ server/demo/             # 种子数据与加载器（Phase 1 静态）
-└─ types/                   # 全局类型
-```
-
-模块化规范见 [`AGENTS.md`](AGENTS.md)；设计规范见 [`docs/设计规范.md`](docs/设计规范.md)。
-
----
-
-## 设计 Token
-
-所有颜色、圆角、阴影、运动时长通过 `src/app/globals.css` 中的 CSS Variables 与 Tailwind v4 `@theme inline` 暴露。**禁止业务组件硬编码 hex**。
-
-- 主色：爆破橙 `--primary`
-- 辅色：冷青 / 电弧蓝 `--accent`
-- 背景：石墨黑 `--background`
-- 风险：success / warning / danger
-- 圆角：`--radius-sm/md/lg/xl`
-- 阴影：`--shadow-sm/md/lg`
-- 运动：`--duration-fast/base/slow`
-
-深色为默认主题，浅色主题完整保留；通过 Navbar 主题切换器（dark / light / system）切换。
-
----
-
-## Demo 脚本入口
-
-Phase 1 阶段不包含真实模型调用；所有数据由 `src/server/demo/loaders.ts` 导出，可直接替换为未来阶段的内存或持久化存储，调用方签名无需变更。
-
-- `loadProjects()`：3 个 Demo 项目（常规 / 复杂约束 / 高风险拦截）
-- `loadAgents()`：8 个 Agent 定义（Supervisor / Normalizer / Retriever / Planner / Generator / Evaluator / Safety / Report）
-- `loadWorkflowSteps()`：与设计规范 §15.1 对齐的 10 个 Workflow 步骤
-- `loadKnowledgeDocs()`：4 份脱敏知识片段
-- `loadReports()`：3 份 Demo 报告
-- `loadDashboardMetrics()`：驾驶舱指标卡数据
-
----
-
-## 已知限制
-
-- Phase 1 不包含真实模型调用，所有内容均为占位；
-- 未引入 TanStack Query / Zustand / ECharts / React Flow / Zod / DeepSeek SDK；预计从 Phase 2 起按需引入；
-- 未启用 Vitest / Playwright；测试基础设施将在后续阶段补齐；
-- 移动端底部导航暂隐藏 `Workflow` 一项，可通过抽屉访问完整导航；
-- 暂无 i18n 与多品牌色变体；本阶段仅 1 主 + 1 辅色。
-
----
-
-## Demo 预设场景
-
-### 常规规划场景
-
-用于展示：
-
-- 参数完整；
-- Workflow 顺利执行；
-- 推荐方案生成；
-- 报告正常输出。
-
-### 复杂约束场景
-
-用于展示：
-
-- 炮孔有水；
-- 环境敏感；
-- 成本和安全存在权衡；
-- 多 Agent 协同；
-- 多方案对比。
-
-### 高风险拦截场景
-
-用于展示：
-
-- 参数缺失；
-- 规则冲突；
-- Safety Reviewer 阻断；
-- 人工补充与复核；
-- Human-in-the-loop。
-
----
-
-## Demo 降级策略
-
-会议展示必须避免因为外部模型或网络故障中断。
-
-降级顺序：
-
-```text
-DeepSeek 正常调用
-    ↓
-超时后自动重试
-    ↓
-切换预录制 Run
-    ↓
-进入演示回放模式
-```
-
-预录制 Run 应包含：
-
-- Workflow Step；
-- Agent 输出；
-- Tool 调用；
-- 图表数据；
-- 知识引用；
-- 报告结果。
-
-系统进入回放模式时必须明确标识，不得伪装为实时模型调用。
-
----
-
-## 开发原则
-
-1. 页面必须体现工作流和智能执行，而不是传统后台卡片堆砌。
-2. Agent 架构必须可见、可解释、可追踪。
-3. 大模型负责理解、规划和生成，确定性代码负责计算、校验和约束。
-4. 所有核心模型输出必须经过 Zod 校验。
-5. 服务端状态、工作区状态、表单状态和 URL 状态必须分离。
-6. React Server Component 优先，Client Component 下沉到交互边界。
-7. DeepSeek 调用必须通过 Provider Adapter，不得写入 React 组件。
-8. 所有关键结果必须关联知识引用或标识为模型推断。
-9. 高风险结果必须经过规则检查、安全 Agent 和人工复核。
-10. 动画必须服务于状态、空间关系和演示叙事。
-11. 图表必须帮助解释结果，不得只用于装饰。
-12. Demo 必须具备真实运行闭环和模型故障降级。
-13. 代码、Schema、Prompt、Workflow 和 Agent Definition 都属于展示成果。
-14. 在主流程完成前，不优先建设复杂微服务和无展示价值的基础设施。
+| 模块 | 文件 |
+| ---- | ---- |
+| Planner 纯函数 | `src/modules/parameter-planning/domain/planner.test.ts` |
+| Agent Registry | `src/modules/agent-runtime/core/agent-registry.test.ts` |
+| Orchestrator | `src/modules/agent-runtime/core/orchestrator.test.ts` |
+| Replay | `src/modules/agent-runtime/core/replay.test.ts` |
+| Tool Registry | `src/modules/agent-runtime/core/tool-registry.test.ts` |
+| RAG Pipeline | `src/modules/knowledge/domain/retrieval.test.ts` |
+| Knowledge Repository | `src/modules/knowledge/infrastructure/repository.test.ts` |
+| Safety Reviewer | `src/modules/safety-review/domain/checker.test.ts` |
+| Human Approval Service | `src/modules/human-review/domain/service.test.ts` |
+| Report Builder | `src/modules/report/domain/builder.test.ts` |
 
 ---
 
 ## 安全与责任边界
 
-BlastForge 当前属于工程辅助 Demo，不替代具备资质的专业工程师。
-
-以下内容不得被视为可直接执行的现场施工指令：
-
-- 装药量与施工药量分配；
-- 孔网参数设计；
-- 起爆网络布置；
-- 延期时间设置；
-- 安全距离计算；
-- 现场施工控制指令。
-
-所有模拟预测结果必须：
-
-- 标识为模拟数据或辅助建议；
-- 显示来源和推断方式；
-- 经过规则校验；
-- 经过 Safety Reviewer；
-- 经过人工确认；
-- 在报告中保留责任边界说明。
+- Demo **不向外部网络开放任何施工指令通道**。
+- **不通过 DeepSeek 调用执行任何具体施工操作**。
+- 所有方案结果都需经人工复核签字后才能进入下一步。
+- 知识库内容明示 `sourceType`（knowledge / regulation / case / material）+ `category`，引用展开可回溯原文。禁止冒充正式规范。
+- `DEEPSEEK_API_KEY` 仅服务端可读，不暴露到前端 Bundle。
+- 高风险场景（`environmentSensitivity=high`、工程类型属于 underground / tunnel / urban-excavation）由 Safety Reviewer 阻断；未走完 HITL 之前 Agent 不得继续。
+- 不引入必须在线的单一外部服务；OpenAI-compatible DeepSeek 失败 → 自动 Replay。
 
 ---
 
-## 测试要求
+## 文档结构
 
-至少覆盖：
-
-- 参数 Schema；
-- 单位转换；
-- 规则检查；
-- 方案评分；
-- Workflow 状态机；
-- Agent 输入输出；
-- Tool 调用；
-- 人工确认节点；
-- RAG 检索；
-- 模型失败降级；
-- PC 与 Mobile 主流程；
-- 风险场景阻断；
-- 报告生成。
-
-提交前执行：
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm test:e2e
+```text
+docs/
+├── STATUS.md                  # 当前开发状态
+├── TASKS.md                   # 任务清单
+├── DECISIONS.md               # 关键决策
+├── 爆擎_BlastForge_Demo技术设计规范.md   # 设计规范
+├── demo-script/               # 演示脚本
+│   ├── 00-demo-overview.md
+│   ├── 01-main-scenario.md
+│   ├── 02-risk-block-scenario.md
+│   ├── 03-agent-architecture.md
+│   └── 04-fallback-plan.md
+└── handoffs/                  # 五阶段交接
+    ├── session-1.md
+    ├── session-2.md
+    ├── session-3.md
+    ├── session-4.md
+    └── session-5.md
 ```
 
 ---
 
-## 文档
+## 已知限制
 
-建议优先阅读：
-
-```text
-docs/architecture/
-docs/database/
-docs/demo-script/
-docs/adr/
-```
-
-核心技术规范：
-
-```text
-docs/爆擎_BlastForge_Demo技术设计规范.md
-```
-
-商业化立项文档：
-
-```text
-docs/爆擎_BlastForge_商业化立项书.md
-```
-
----
-
-## 当前阶段路线
-
-### Phase 1：视觉与项目骨架
-
-- 品牌视觉；
-- 响应式布局；
-- 首页；
-- 驾驶舱；
-- 动画基础设施；
-- Demo 数据。
-
-### Phase 2：参数规划闭环
-
-- 参数表单；
-- 参数 Schema；
-- 规划工作台；
-- 多方案对比；
-- 图表联动。
-
-### Phase 3：Agent Runtime
-
-- DeepSeek Provider；
-- Agent Registry；
-- Tool Registry；
-- Workflow Engine；
-- Trace Recorder。
-
-### Phase 4：RAG 与安全复核
-
-- 知识库；
-- pgvector；
-- 知识引用；
-- Safety Reviewer；
-- 人工确认。
-
-### Phase 5：报告与会议演示
-
-- 报告预览；
-- 导出；
-- 全屏演示模式；
-- 预录制 Run；
-- 演示脚本；
-- 故障降级。
-
----
-
-## 项目状态
-
-```text
-当前阶段：Demo 设计与开发
-主要目标：完成爆破参数规划与多 Agent 协同闭环
-主要展示端：PC
-辅助展示端：Mobile Responsive
-模型：DeepSeek-V4-Pro
-```
+- 内存 Repository 当前不持久化；切换数据库按 `src/db/schema` 蓝图迁移。
+- `PresentationScriptBar` 默认未自动播放；演示者手动触发，避免「假演示」。
+- 浅色主题切换时图表颜色需刷新页面（缓存在 `chart-theme.ts`）。
+- 浏览器自动化 E2E 暂未接入 Playwright；后续可扩展。
 
 ---
 

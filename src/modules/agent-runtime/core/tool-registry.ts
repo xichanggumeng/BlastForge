@@ -36,6 +36,13 @@ import {
 } from "@/modules/parameter-planning/domain/contracts";
 
 import type { Citation } from "./contracts";
+import { getKnowledgeRepository } from "@/modules/knowledge/infrastructure/repository";
+import {
+  KNOWLEDGE_CATEGORIES,
+  type KnowledgeCategory,
+} from "@/modules/knowledge/domain";
+import { runSafetyReview, kindLabel, severityRank } from "@/modules/safety-review/domain";
+import { getHumanApprovalService } from "@/modules/human-review/domain";
 
 /* ---------- ToolContext ---------- */
 
@@ -107,11 +114,15 @@ const searchKnowledgeOutputSchema = z.object({
       id: z.string(),
       documentId: z.string(),
       documentTitle: z.string(),
+      sourceType: z.string(),
       category: z.string(),
       page: z.number().optional(),
       section: z.string().optional(),
       excerpt: z.string(),
       score: z.number().min(0).max(1),
+      matchedTokens: z.array(z.string()),
+      usedByAgents: z.array(z.string()),
+      affectedConclusions: z.array(z.string()),
     }),
   ),
 });
@@ -132,6 +143,62 @@ const runRuleCheckOutputSchema = z.object({
     }),
   ),
   hasBlocking: z.boolean(),
+});
+
+const runSafetyReviewInputSchema = z.object({
+  input: blastScenarioInputSchema,
+  normalized: normalizeParamsOutputSchema.shape.normalized,
+  ruleIssues: runRuleCheckOutputSchema.shape.issues,
+  schemeSet: z.object({
+    schemes: z.array(z.unknown()),
+    recommendedId: z.string(),
+    alternativeIds: z.array(z.string()),
+    riskIds: z.array(z.string()),
+  }),
+  citationCount: z.number().int().min(0).default(0),
+  risks: z.array(
+    z.object({
+      id: z.string(),
+      level: z.enum(["low", "medium", "high"]),
+      title: z.string(),
+      description: z.string().default(""),
+      schemeId: z.string().optional(),
+      paramKey: z.string().optional(),
+    }),
+  ),
+  reviews: z.array(
+    z.object({
+      id: z.string(),
+      reason: z.string(),
+      level: z.enum(["low", "medium", "high"]),
+      paramKey: z.string().optional(),
+      schemeId: z.string().optional(),
+    }),
+  ),
+});
+
+const runSafetyReviewOutputSchema = z.object({
+  blocked: z.boolean(),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      kind: z.string(),
+      severity: z.enum(["info", "warning", "block"]),
+      title: z.string(),
+      description: z.string(),
+      references: z.array(z.string()),
+      ownerRole: z.string(),
+      canBypass: z.boolean(),
+    }),
+  ),
+  manualConfirmation: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      severity: z.enum(["info", "warning", "block"]),
+      references: z.array(z.string()),
+    }),
+  ),
 });
 
 const calculateScoreInputSchema = z.object({
@@ -248,7 +315,7 @@ class SearchKnowledgeTool
   implements AgentTool<z.infer<typeof searchKnowledgeInputSchema>, z.infer<typeof searchKnowledgeOutputSchema>>
 {
   readonly name = "search_knowledge";
-  readonly description = "检索本地 Demo 知识库片段；返回引用与得分。";
+  readonly description = "检索 Demo 知识库；返回引用（documentId / 章节 / 命中片段 / 检索得分）。底层使用 RAG 管道，关键词 + 元数据为基线。";
   readonly inputSchema = searchKnowledgeInputSchema;
   readonly outputSchema = searchKnowledgeOutputSchema;
   readonly highRisk = false;
@@ -257,49 +324,30 @@ class SearchKnowledgeTool
     input: z.infer<typeof searchKnowledgeInputSchema>,
   ): Promise<z.infer<typeof searchKnowledgeOutputSchema>> {
     const parsed = searchKnowledgeInputSchema.parse(input);
-    const rawQuery = parsed.query.toLowerCase();
-    // 兼容中文 / 英文 / 数字 token；中文按字符拆分
-    const tokens = Array.from(
-      new Set(
-        rawQuery
-          .split(/[\s,，。；;]+/)
-          .flatMap((seg) =>
-            /[一-龥]/.test(seg) ? Array.from(seg) : [seg],
-          )
-          .map((t) => t.toLowerCase())
-          .filter(Boolean),
-      ),
-    );
-    if (tokens.length === 0) {
-      return { citations: [] };
-    }
-    const filtered = DEMO_KNOWLEDGE.filter(
-      (d) =>
-        !parsed.categories ||
-        parsed.categories.length === 0 ||
-        parsed.categories.includes(d.category),
-    );
-    const scored = filtered.map((doc) => {
-      const haystack = `${doc.title} ${doc.excerpt}`.toLowerCase();
-      let hits = 0;
-      for (const t of tokens) if (haystack.includes(t)) hits += 1;
-      const score = tokens.length === 0 ? 0 : Math.min(1, hits / tokens.length);
-      return { doc, score };
+    const result = await getKnowledgeRepository().retrieve({
+      query: parsed.query,
+      categories:
+        parsed.categories && parsed.categories.length > 0
+          ? (parsed.categories.filter((c): c is KnowledgeCategory =>
+              (KNOWLEDGE_CATEGORIES as readonly string[]).includes(c),
+            ) as KnowledgeCategory[])
+          : undefined,
+      limit: parsed.limit,
     });
-    const ranked = scored
-      .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, parsed.limit);
     return {
-      citations: ranked.map((s) => ({
-        id: `cit-${s.doc.id}`,
-        documentId: s.doc.id,
-        documentTitle: s.doc.title,
-        category: s.doc.category,
-        page: s.doc.page,
-        section: s.doc.section,
-        excerpt: s.doc.excerpt,
-        score: Number(s.score.toFixed(3)),
+      citations: result.citations.map((c) => ({
+        id: c.id,
+        documentId: c.documentId,
+        documentTitle: c.documentTitle,
+        sourceType: c.sourceType,
+        category: c.category,
+        page: c.page,
+        section: c.section,
+        excerpt: c.excerpt,
+        score: c.score,
+        matchedTokens: [...c.matchedTokens],
+        usedByAgents: [...c.usedByAgents],
+        affectedConclusions: [...c.affectedConclusions],
       })),
     };
   }
@@ -342,6 +390,69 @@ class RunRuleCheckTool
     };
   }
 }
+
+class RunSafetyReviewTool
+  implements
+    AgentTool<z.infer<typeof runSafetyReviewInputSchema>, z.infer<typeof runSafetyReviewOutputSchema>>
+{
+  readonly name = "run_safety_review";
+  readonly description = "运行结构化 Safety Reviewer：缺失参数 / 规则冲突 / 模型与规则 / 缺少引用 / 高风险字段；输出 checklist 与是否阻断。";
+  readonly inputSchema = runSafetyReviewInputSchema;
+  readonly outputSchema = runSafetyReviewOutputSchema;
+  readonly highRisk = true;
+
+  async execute(
+    input: z.infer<typeof runSafetyReviewInputSchema>,
+    ctx: ToolContext,
+  ): Promise<z.infer<typeof runSafetyReviewOutputSchema>> {
+    const parsed = runSafetyReviewInputSchema.parse(input);
+    const result = runSafetyReview({
+      input: parsed.input,
+      normalized: parsed.normalized as unknown as NormalizedParameterSet,
+      ruleIssues: parsed.ruleIssues as ReadonlyArray<RuleCheckIssue>,
+      schemeSet: parsed.schemeSet as unknown as SchemeSet,
+      citationCount: parsed.citationCount,
+      risks: parsed.risks,
+      reviews: parsed.reviews,
+    });
+    // 注册人工审批：所有 warning/block 项
+    const items = result.items
+      .filter((i) => i.severity !== "info")
+      .map((i) => ({
+        id: i.id,
+        title: i.title,
+        severity: i.severity,
+        ownerRole: i.ownerRole,
+        canBypass: i.canBypass,
+      }));
+    if (items.length > 0) {
+      getHumanApprovalService().register({ runId: ctx.runId, items });
+    }
+    return {
+      blocked: result.blocked,
+      items: result.items.map((i) => ({
+        id: i.id,
+        kind: i.kind,
+        severity: i.severity,
+        title: i.title,
+        description: i.description,
+        references: [...i.references],
+        ownerRole: i.ownerRole,
+        canBypass: i.canBypass,
+      })),
+      manualConfirmation: result.manualConfirmation.map((i) => ({
+        id: i.id,
+        title: i.title,
+        severity: i.severity,
+        references: [...i.references],
+      })),
+    };
+  }
+}
+
+// 防止 lint 报未使用
+void severityRank;
+void kindLabel;
 
 class CalculateSchemeScoreTool
   implements AgentTool<z.infer<typeof calculateScoreInputSchema>, z.infer<typeof calculateScoreOutputSchema>>
@@ -436,19 +547,37 @@ class RequestHumanApprovalTool
     >
 {
   readonly name = "request_human_approval";
-  readonly description = "创建人工审批节点；Demo 中以默认 approved=false 返回。";
+  readonly description = "创建人工审批节点；Demo 中以默认 approved=false 返回，并把待办注册到 Approval Service。";
   readonly inputSchema = requestHumanApprovalInputSchema;
   readonly outputSchema = requestHumanApprovalOutputSchema;
   readonly highRisk = true;
 
   async execute(
     input: z.infer<typeof requestHumanApprovalInputSchema>,
+    ctx: ToolContext,
   ): Promise<z.infer<typeof requestHumanApprovalOutputSchema>> {
+    // 将本次审批登记到 HumanApproval Service，便于 UI 与 Report 引用。
+    const item = {
+      id: `chk-${ctx.runId}-${ctx.stepId}`,
+      title: input.prompt,
+      severity: "block" as const,
+      ownerRole: "safety-officer" as const,
+      canBypass: false,
+    };
+    try {
+      getHumanApprovalService().register({
+        runId: ctx.runId,
+        items: [item],
+      });
+    } catch (err) {
+      // 即使注册失败也不影响 Agent 推进；UI 后续可重新登记。
+      void err;
+    }
     return {
       approved: false,
       approver: "pending",
       approvedAt: Date.now(),
-      comment: `等待人工确认：${input.prompt}（理由：${input.reasons.join("; ")}）`,
+      comment: `等待人工确认：${input.prompt}（理由：${input.reasons.join("; ") || "无"})`,
     };
   }
 }
@@ -552,70 +681,17 @@ function computeDifferences(schemes: readonly Scheme[]): Array<{
 
 /* ---------- 知识库（Demo） ---------- */
 
-interface KnowledgeDoc {
-  id: string;
-  title: string;
-  category: string;
-  page?: number;
-  section?: string;
-  excerpt: string;
-}
-
-const DEMO_KNOWLEDGE: ReadonlyArray<KnowledgeDoc> = [
-  {
-    id: "doc-001",
-    title: "爆破安全规程（GB 6722-2014）摘要",
-    category: "规范",
-    page: 12,
-    section: "4.2 露天深孔台阶",
-    excerpt: "露天深孔台阶爆破应按设计孔网参数、装药结构、最大单响药量进行控制。",
-  },
-  {
-    id: "doc-002",
-    title: "乳化炸药性能与适用场景",
-    category: "材料",
-    section: "2.3 抗水性",
-    excerpt: "抗水性优于铵油炸药，适用于含水炮孔；建议临界直径不小于 25mm。",
-  },
-  {
-    id: "doc-003",
-    title: "城镇周边控制爆破案例库",
-    category: "案例",
-    page: 47,
-    section: "案例 12",
-    excerpt: "针对学校、居民区附近必须按允许振速 v=1.0 cm/s 进行试爆校核。",
-  },
-  {
-    id: "doc-004",
-    title: "节理裂隙岩体爆破参数建议",
-    category: "教材",
-    section: "3.1 孔距系数",
-    excerpt: "节理发育岩体建议孔距系数取 1.0–1.2，并加密堵塞长度。",
-  },
-  {
-    id: "doc-005",
-    title: "高敏感环境最大单响估算",
-    category: "规范",
-    page: 18,
-    section: "5.1 振动控制",
-    excerpt: "高敏感环境应按 v ≤ 1.0 cm/s 控制，并通过试爆校核最大单响药量。",
-  },
-  {
-    id: "doc-006",
-    title: "隧道掘进装药结构经验",
-    category: "教材",
-    section: "4.4 间隔装药",
-    excerpt: "隧道掘进常采用间隔装药结构并配置高精度雷管，减少单响药量。",
-  },
-];
-
 /** 给前端使用的知识库索引（仅元数据，不含原文）。 */
-export function listKnowledgeIndex(): readonly {
-  id: string;
-  title: string;
-  category: string;
-}[] {
-  return DEMO_KNOWLEDGE.map((d) => ({ id: d.id, title: d.title, category: d.category }));
+export async function listKnowledgeIndex(): Promise<
+  ReadonlyArray<{ id: string; title: string; category: string; sourceType: string }>
+> {
+  const docs = getKnowledgeRepository().listDocuments();
+  return docs.map((d) => ({
+    id: d.id,
+    title: d.title,
+    category: d.category,
+    sourceType: d.sourceType,
+  }));
 }
 
 /* ---------- Registry ---------- */
@@ -627,6 +703,7 @@ const TOOLS: Record<string, AgentTool<unknown, unknown>> = {
   >,
   search_knowledge: new SearchKnowledgeTool() as AgentTool<unknown, unknown>,
   run_rule_check: new RunRuleCheckTool() as AgentTool<unknown, unknown>,
+  run_safety_review: new RunSafetyReviewTool() as AgentTool<unknown, unknown>,
   calculate_scheme_score: new CalculateSchemeScoreTool() as AgentTool<unknown, unknown>,
   analyze_parameter_sensitivity: new AnalyzeParameterSensitivityTool() as AgentTool<
     unknown,
@@ -650,13 +727,30 @@ export function listTools(): readonly AgentTool<unknown, unknown>[] {
 }
 
 /** Citation → 输出（适配核心 Citation 类型）。 */
-export function asCitation(input: z.infer<typeof searchKnowledgeOutputSchema>["citations"][number]): Citation {
+export function asCitation(input: {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  sourceType: string;
+  category: string;
+  page?: number;
+  section?: string;
+  excerpt: string;
+  score: number;
+  matchedTokens: ReadonlyArray<string>;
+  usedByAgents: ReadonlyArray<string>;
+  affectedConclusions: ReadonlyArray<string>;
+}): Citation {
   return {
     id: input.id,
     documentId: input.documentId,
     documentTitle: input.documentTitle,
+    sourceType: input.sourceType,
     category: input.category,
     score: input.score,
+    matchedTokens: [...input.matchedTokens],
+    usedByAgents: [...input.usedByAgents],
+    affectedConclusions: [...input.affectedConclusions],
     ...(input.page !== undefined ? { page: input.page } : {}),
     ...(input.section !== undefined ? { section: input.section } : {}),
     excerpt: input.excerpt,
