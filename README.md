@@ -363,19 +363,19 @@ BlastForge/
 
 ## 本地开发
 
+> Phase 1 阶段仅完成视觉与骨架。本仓库使用 **npm**（仓库已锁定 `package-lock.json`），暂未启用 pnpm Workspace / Turborepo / 数据库。后续阶段将按设计规范在合理时机引入。
+
 ### 环境要求
 
-建议环境：
-
 - Node.js 22+
-- pnpm 10+
-- PostgreSQL 16+
-- Docker Desktop，可选
+- npm 10+
+
+PostgreSQL、pnpm Workspace、Turborepo、Docker 暂不在 Phase 1 范围内。
 
 ### 安装依赖
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 配置环境变量
@@ -392,30 +392,19 @@ Windows PowerShell：
 Copy-Item .env.example .env.local
 ```
 
-环境变量示例：
+Phase 1 阶段仅需要两个公开变量（见 [`.env.example`](.env.example)）：
 
 ```dotenv
-DATABASE_URL=
-DEEPSEEK_API_KEY=
-DEEPSEEK_MODEL=deepseek-v4-pro
 NEXT_PUBLIC_APP_NAME=BlastForge
 NEXT_PUBLIC_DEMO_MODE=true
 ```
 
-禁止将真实密钥提交到仓库。
-
-### 初始化数据库
-
-```bash
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-```
+禁止将任何真实密钥提交到仓库；后续阶段的服务端密钥将由专门的 Server-Side 环境变量承载，不会出现在 `NEXT_PUBLIC_*` 中。
 
 ### 启动开发环境
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 默认访问：
@@ -424,30 +413,97 @@ pnpm dev
 http://localhost:3000
 ```
 
+可访问的主路由：
+
+```text
+/                  品牌首页
+/dashboard         总览（智能驾驶舱）
+/planner           参数规划
+/agents            Agent 工作台
+/workflow          Workflow 视图
+/knowledge         知识库
+/reports           报告中心
+```
+
 ---
 
 ## 常用命令
 
 ```bash
-pnpm dev
-pnpm build
-pnpm start
-
-pnpm lint
-pnpm format
-pnpm typecheck
-
-pnpm test
-pnpm test:watch
-pnpm test:e2e
-
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-pnpm db:studio
+npm run dev        # 启动开发服务器（Turbopack）
+npm run build      # 生产构建
+npm run start      # 启动生产服务器
+npm run lint       # ESLint 静态检查
 ```
 
-具体命令以仓库根目录 `package.json` 为准。
+`typecheck`、`format`、`test`、`test:e2e`、`db:*` 等命令将在后续阶段补齐。`typecheck` 目前可通过 `npx tsc --noEmit` 直接调用。
+
+---
+
+## 项目结构
+
+```text
+src/
+├─ app/
+│  ├─ (workspace)/          # route group，共享 AppShell
+│  ├─ loading.tsx           # 全局 Loading
+│  ├─ error.tsx             # 全局 Error（含恢复动作）
+│  ├─ not-found.tsx         # 全局 NotFound
+│  ├─ layout.tsx            # 根 layout、metadata、ThemeScript
+│  ├─ globals.css           # 设计 Token 与 Tailwind v4 @theme
+│  └─ page.tsx              # 品牌首页 Hero
+├─ components/
+│  ├─ ui/                   # 基础件（Button、Badge、Surface、Skeleton、Separator）
+│  ├─ layout/               # AppShell、Navbar、Sidebar、MobileNav、ThemeToggle、ModulePreviewCard
+│  ├─ feedback/             # PageHeader、SectionHeader、MetricCard、Status/Risk/DemoMode Badge、Empty/Error/Loading
+│  └─ system/               # ThemeProvider、ThemeScript
+├─ config/                  # brand / nav / env-public 常量
+├─ lib/                     # cn、format、env 工具
+├─ modules/                 # 业务模块占位（Phase 2 起填充）
+├─ server/demo/             # 种子数据与加载器（Phase 1 静态）
+└─ types/                   # 全局类型
+```
+
+模块化规范见 [`AGENTS.md`](AGENTS.md)；设计规范见 [`docs/设计规范.md`](docs/设计规范.md)。
+
+---
+
+## 设计 Token
+
+所有颜色、圆角、阴影、运动时长通过 `src/app/globals.css` 中的 CSS Variables 与 Tailwind v4 `@theme inline` 暴露。**禁止业务组件硬编码 hex**。
+
+- 主色：爆破橙 `--primary`
+- 辅色：冷青 / 电弧蓝 `--accent`
+- 背景：石墨黑 `--background`
+- 风险：success / warning / danger
+- 圆角：`--radius-sm/md/lg/xl`
+- 阴影：`--shadow-sm/md/lg`
+- 运动：`--duration-fast/base/slow`
+
+深色为默认主题，浅色主题完整保留；通过 Navbar 主题切换器（dark / light / system）切换。
+
+---
+
+## Demo 脚本入口
+
+Phase 1 阶段不包含真实模型调用；所有数据由 `src/server/demo/loaders.ts` 导出，可直接替换为未来阶段的内存或持久化存储，调用方签名无需变更。
+
+- `loadProjects()`：3 个 Demo 项目（常规 / 复杂约束 / 高风险拦截）
+- `loadAgents()`：8 个 Agent 定义（Supervisor / Normalizer / Retriever / Planner / Generator / Evaluator / Safety / Report）
+- `loadWorkflowSteps()`：与设计规范 §15.1 对齐的 10 个 Workflow 步骤
+- `loadKnowledgeDocs()`：4 份脱敏知识片段
+- `loadReports()`：3 份 Demo 报告
+- `loadDashboardMetrics()`：驾驶舱指标卡数据
+
+---
+
+## 已知限制
+
+- Phase 1 不包含真实模型调用，所有内容均为占位；
+- 未引入 TanStack Query / Zustand / ECharts / React Flow / Zod / DeepSeek SDK；预计从 Phase 2 起按需引入；
+- 未启用 Vitest / Playwright；测试基础设施将在后续阶段补齐；
+- 移动端底部导航暂隐藏 `Workflow` 一项，可通过抽屉访问完整导航；
+- 暂无 i18n 与多品牌色变体；本阶段仅 1 主 + 1 辅色。
 
 ---
 
