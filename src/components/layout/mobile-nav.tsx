@@ -71,10 +71,13 @@ export function MobileNav() {
 export function MobileBottomNav() {
   const pathname = usePathname();
 
+  const itemCount = MOBILE_BOTTOM_KEYS.length;
+
   return (
     <nav
       aria-label="移动端底部导航"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] lg:hidden"
+      style={{ gridTemplateColumns: `repeat(${itemCount}, minmax(0, 1fr))` }}
+      className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       {MOBILE_BOTTOM_KEYS.map((href) => {
         const item = NAV_ITEMS.find((entry) => entry.href === href);
@@ -119,7 +122,7 @@ function BottomLink({
       )}
     >
       <Icon className={cn("h-5 w-5")} aria-hidden />
-      <span>{label}</span>
+      <span className="whitespace-nowrap">{label}</span>
     </Link>
   );
 }
