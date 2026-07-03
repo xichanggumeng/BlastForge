@@ -130,10 +130,19 @@ export function EngineeringScenarioForm({
     }
   }, [watched, draftLoaded]);
 
-  const onFormSubmit = form.handleSubmit(async (values) => {
-    const verified = blastScenarioInputSchema.parse(values);
-    await onSubmit(verified);
-  });
+  const onFormSubmit = form.handleSubmit(
+    async (values) => {
+      const verified = blastScenarioInputSchema.parse(values);
+      await onSubmit(verified);
+    },
+    (errors) => {
+      // 校验失败时记录到控制台，便于移动端 / 桌面端排查；
+      // RHF 会同时把错误写入字段 state，表单已自动展示 inline error。
+      if (typeof window !== "undefined") {
+        console.warn("[EngineeringScenarioForm] validation failed:", Object.keys(errors));
+      }
+    },
+  );
 
   const grouped = useMemo(() => {
     const map: Record<FieldMeta["group"], FieldMeta[]> = {
@@ -243,10 +252,15 @@ export function EngineeringScenarioForm({
             </span>
           ) : null}
           <Button
-            type="submit"
+            type="button"
             variant="primary"
             loading={submitting}
             disabled={disabled}
+            onClick={() => {
+              // 显式触发 RHF 校验 + onValid，避免任何浏览器原生 form submission
+              // 路径在某些环境下被异常触发（移动端 / 表单嵌套等）。
+              void onFormSubmit();
+            }}
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             启动规划

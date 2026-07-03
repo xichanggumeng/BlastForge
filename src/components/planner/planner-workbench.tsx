@@ -188,7 +188,15 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
 
   const handleSubmit = useCallback(
     (input: BlastScenarioInput) => {
-      const verified = blastScenarioInputSchema.parse(input);
+      let verified: BlastScenarioInput;
+      try {
+        verified = blastScenarioInputSchema.parse(input);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "输入校验失败";
+        // 不静默吞错；保留行内展示（由 RHF onInvalid 处理）。
+        console.warn("[PlannerWorkbench] scenario input invalid:", message);
+        return;
+      }
       if (useAgent) {
         void startAgent({ input: verified, presetId: activePresetId ?? undefined });
       } else {
@@ -197,10 +205,24 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
           presetId: activePresetId ?? undefined,
         });
       }
-      setMobileStep(2);
+      // 移动端先进入「参数确认」步骤（步骤 1），让用户能查看归一化结果后再执行规划。
+      // 桌面端不存在 mobileStep 概念，跳转不影响。
+      setMobileStep(1);
     },
     [activePresetId, setMobileStep, startAgent, startLocal, useAgent],
   );
+
+  const handleStartExecution = useCallback(() => {
+    if (useAgent) {
+      void startAgent({ input: initialInput, presetId: activePresetId ?? undefined });
+    } else {
+      startLocal({
+        input: initialInput,
+        presetId: activePresetId ?? undefined,
+      });
+    }
+    // 执行规划启动后停留在当前步骤，让用户查看步骤时间线；用户可主动「下一步」进入方案对比。
+  }, [activePresetId, initialInput, startAgent, startLocal, useAgent]);
 
   const selectedScheme = useMemo(() => {
     if (!run) return undefined;
@@ -267,16 +289,7 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
         >
           <ExecuteSection
             state={state}
-            onStart={() => {
-              if (useAgent) {
-                void startAgent({ input: initialInput, presetId: activePresetId ?? undefined });
-              } else {
-                startLocal({
-                  input: initialInput,
-                  presetId: activePresetId ?? undefined,
-                });
-              }
-            }}
+            onStart={handleStartExecution}
             onCancel={cancel}
             onReset={() => {
               reset();
@@ -323,7 +336,7 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
         <MobileNavControls
           step={mobileStep}
           setStep={setMobileStep}
-          canAdvance={Boolean(run)}
+          canAdvance={canAdvanceMobile(mobileStep, Boolean(run))}
           canPrev={mobileStep > 0}
         />
       </div>
@@ -354,16 +367,7 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
 
           <ExecuteSection
             state={state}
-            onStart={() => {
-              if (useAgent) {
-                void startAgent({ input: initialInput, presetId: activePresetId ?? undefined });
-              } else {
-                startLocal({
-                  input: initialInput,
-                  presetId: activePresetId ?? undefined,
-                });
-              }
-            }}
+            onStart={handleStartExecution}
             onCancel={cancel}
             onReset={() => {
               reset();
@@ -547,6 +551,26 @@ function MobileNavControls({
       </Button>
     </div>
   );
+}
+
+/**
+ * 移动端步骤可前进性。
+ * - step 0 → 1：场景输入提交后即可进入「参数确认」（不依赖 run，因为参数确认展示的是归一化结果）。
+ * - step 1 → 2：「参数确认」完成后即可进入「执行规划」（不依赖 run）。
+ * - step 2 → 3：「执行规划」需要 run 完成后才能跳到「方案对比」。
+ * - step 3 → 4：「方案对比」无强制约束。
+ */
+function canAdvanceMobile(step: number, hasRun: boolean): boolean {
+  switch (step) {
+    case 0:
+    case 1:
+    case 3:
+      return true;
+    case 2:
+      return hasRun;
+    default:
+      return false;
+  }
 }
 
 function ExecuteSection({
