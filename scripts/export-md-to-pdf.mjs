@@ -90,6 +90,11 @@ thead { background: #f1f5f9; }
 .fb-purpose { color: #475569; margin: 1mm 0 0; font-size: 9.5pt; }
 .fb-code-label { color: #475569; margin: 1mm 0 0; font-size: 9pt; }
 /* markdown-it 默认会让行首 4 空格渲染成 <pre><code>，这正好用作代码块的视觉 */
+img {
+  max-width: 100%;
+  height: auto;
+  page-break-inside: avoid;
+}
 `;
 
 function detectTool() {
@@ -119,27 +124,32 @@ function decorateIndentedLabels(html) {
     .replace(/<p>\s{4}代码：<\/p>/g, '<p class="fb-code-label">代码：</p>');
 }
 
-function mdToHtml(markdown, cssText) {
+function mdToHtml(markdown, cssText, rootDir) {
   const md = new MarkdownIt({
     html: true,
     linkify: true,
     breaks: false,
     highlight: (str, lang) => {
-      // 我们不在前端 highlight，由 PDF 渲染时由浏览器/Chromium 自动着色。
-      // 这里只保证被包在 <pre><code class="language-xxx"> 中。
       const cls = lang ? ' class="language-' + lang + '"' : '';
       const esc = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       return '<pre><code' + cls + '>' + esc + '\n</code></pre>';
     },
   });
-  // 上一步我们在 export-code-docs 中已把内层 ``` 转成了 ````，
-  // markdown-it 默认会把所有 ```+lang 解析成 fence。这里不再做转义处理。
   const body = md.render(markdown);
+
+  // 把 ./public/、./bin/ 这类相对路径改写为绝对 file:// URL，
+  // 避免 Puppeteer + file:// 协议下"基准目录不固定"导致图片丢失。
+  const publicAbs = path.resolve(rootDir, 'public').replace(/\\/g, '/');
+  const rewrittenBody = body
+    .replace(/src="\.\/public\//g, `src="file:///${publicAbs}/`)
+    .replace(/src="\.\.\/\.\.\/public\//g, `src="file:///${publicAbs}/`)
+    .replace(/src="public\//g, `src="file:///${publicAbs}/`);
+
   const html =
     '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">' +
     '<title>code-export</title>' +
     '<style>' + cssText + '</style>' +
-    '</head><body>' + decorateIndentedLabels(body) + '</body></html>';
+    '</head><body>' + decorateIndentedLabels(rewrittenBody) + '</body></html>';
   return html;
 }
 
@@ -173,7 +183,14 @@ async function main() {
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--font-render-hinting=none',
+      // 允许 file:// 协议加载其他本地文件（图片、CSS 等），
+      // 否则 Export PDF 时相对路径图片会被 Chromium 拦截为 "Not allowed to load local resource"
+      '--allow-file-access-from-files',
+    ],
   });
   let ok = 0;
   let failed = 0;
@@ -183,7 +200,7 @@ async function main() {
       const outputPdf = path.join(OUT_DIR, name.replace(/\.md$/i, '.pdf'));
       try {
         const md = await readFile(inputMd, 'utf8');
-        const html = mdToHtml(md, css);
+        const html = mdToHtml(md, css, ROOT);
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
         await page.pdf({
