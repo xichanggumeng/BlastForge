@@ -139,12 +139,12 @@ export function ShowcaseHero({ className }: ShowcaseHeroProps) {
             {HERO_METRICS.map((metric) => (
               <div
                 key={metric.label}
-                className="flex flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2.5"
+                className="flex min-h-[78px] flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2.5"
               >
                 <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                   {metric.label}
                 </span>
-                <span className="tabular text-xl font-semibold leading-tight text-foreground">
+                <span className="tabular mt-auto text-xl font-semibold leading-tight text-foreground">
                   <CountUp
                     value={metric.value}
                     digits={0}
