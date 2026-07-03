@@ -33,27 +33,27 @@ function ShellInner({ children }: AppShellProps) {
   }, [setMobileOpen]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground">
       <Navbar />
       <MobileNav />
-      <div className="flex flex-1">
+      <div className="flex min-w-0 flex-1">
         <aside
           aria-label="桌面侧栏"
           className={cn(
-            "sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 border-r border-border bg-surface/60 transition-[width] duration-base lg:block",
+            "sticky top-14 hidden h-[calc(100vh-3.5rem)] shrink-0 overflow-hidden border-r border-border bg-surface/60 transition-[width] duration-base lg:block",
             collapsed ? "w-16" : "w-64",
           )}
         >
-          <div className="h-full overflow-y-auto">
+          <div className="h-full w-full overflow-y-auto">
             <Sidebar />
           </div>
         </aside>
         <main
           id="main-content"
-          className="relative flex-1 pb-24 lg:pb-10"
+          className="relative min-w-0 flex-1 overflow-x-hidden pb-24 lg:pb-10"
           tabIndex={-1}
         >
-          <div className="w-full px-4 py-6 lg:px-8 lg:py-10">
+          <div className="w-full min-w-0 px-4 py-6 lg:px-8 lg:py-10">
             {children}
           </div>
         </main>
