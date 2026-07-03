@@ -64,6 +64,15 @@ export function ShowcaseAgentNetwork({
   const viewBoxWidth = 600;
   const nodeSize = variant === "compact" ? 26 : 34;
 
+  // Topology coordinates use a normalised 0–100 space; map to viewBox with padding.
+  const canvasPadding = variant === "compact" ? 18 : 26;
+  const innerWidth = viewBoxWidth - canvasPadding * 2;
+  const innerHeight = viewBoxHeight - canvasPadding * 2;
+  const scaleX = innerWidth / 100;
+  const scaleY = innerHeight / 100;
+  const toX = (x: number) => canvasPadding + x * scaleX;
+  const toY = (y: number) => canvasPadding + y * scaleY;
+
   return (
     <div
       role="group"
@@ -129,13 +138,17 @@ export function ShowcaseAgentNetwork({
             const to = nodeById.get(edge.to);
             if (!from || !to) return null;
             const tone = TONE_COLORS[edge.tone];
+            const fx = toX(from.x);
+            const fy = toY(from.y);
+            const tx = toX(to.x);
+            const ty = toY(to.y);
             // Curved path between two points for a softer feel.
-            const midX = (from.x + to.x) / 2;
+            const midX = (fx + tx) / 2;
             const c1x = midX;
-            const c1y = from.y;
+            const c1y = fy;
             const c2x = midX;
-            const c2y = to.y;
-            const path = `M ${from.x} ${from.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${to.x} ${to.y}`;
+            const c2y = ty;
+            const path = `M ${fx} ${fy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tx} ${ty}`;
             return (
               <g key={`${edge.from}-${edge.to}-${idx}`}>
                 <path
@@ -166,7 +179,7 @@ export function ShowcaseAgentNetwork({
                     />
                   </motion.circle>
                 ) : (
-                  <circle r={2.4} fill={tone.stroke} cx={to.x} cy={to.y} opacity={0.6} />
+                  <circle r={2.4} fill={tone.stroke} cx={tx} cy={ty} opacity={0.6} />
                 )}
               </g>
             );
@@ -178,12 +191,14 @@ export function ShowcaseAgentNetwork({
           {topology.nodes.map((node, idx) => {
             const fill = GROUP_FILL[node.group] ?? "var(--surface)";
             const labelOffset = variant === "compact" ? 30 : 36;
+            const nx = toX(node.x);
+            const ny = toY(node.y);
             return (
               <g key={node.id}>
                 {!reduce ? (
                   <motion.circle
-                    cx={node.x}
-                    cy={node.y}
+                    cx={nx}
+                    cy={ny}
                     r={nodeSize / 1.6}
                     fill={fill}
                     stroke="var(--border-strong)"
@@ -198,8 +213,8 @@ export function ShowcaseAgentNetwork({
                   />
                 ) : (
                   <circle
-                    cx={node.x}
-                    cy={node.y}
+                    cx={nx}
+                    cy={ny}
                     r={nodeSize / 1.6}
                     fill={fill}
                     stroke="var(--border-strong)"
@@ -209,8 +224,8 @@ export function ShowcaseAgentNetwork({
                 {/* Pulse */}
                 {!reduce ? (
                   <motion.circle
-                    cx={node.x}
-                    cy={node.y}
+                    cx={nx}
+                    cy={ny}
                     r={nodeSize / 2}
                     stroke="var(--primary)"
                     strokeWidth={1}
@@ -230,8 +245,8 @@ export function ShowcaseAgentNetwork({
                 ) : null}
                 {/* Label */}
                 <text
-                  x={node.x}
-                  y={node.y - labelOffset}
+                  x={nx}
+                  y={ny - labelOffset}
                   textAnchor="middle"
                   fill="var(--foreground)"
                   fontFamily="var(--font-geist-sans), 'PingFang SC', system-ui"
@@ -241,8 +256,8 @@ export function ShowcaseAgentNetwork({
                   {node.label}
                 </text>
                 <text
-                  x={node.x}
-                  y={node.y - labelOffset + (variant === "compact" ? 11 : 13)}
+                  x={nx}
+                  y={ny - labelOffset + (variant === "compact" ? 11 : 13)}
                   textAnchor="middle"
                   fill="var(--muted-foreground)"
                   fontFamily="var(--font-geist-sans), 'PingFang SC', system-ui"
@@ -253,8 +268,8 @@ export function ShowcaseAgentNetwork({
                 {/* Active state for Supervisor */}
                 {node.id === "supervisor" && !reduce ? (
                   <motion.circle
-                    cx={node.x}
-                    cy={node.y}
+                    cx={nx}
+                    cy={ny}
                     r={4}
                     fill="var(--primary)"
                     animate={{ scale: [1, 1.5, 1], opacity: [1, 0.6, 1] }}
