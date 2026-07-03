@@ -67,9 +67,9 @@ export function GenerateReportButton({
         onClick={() => void submit()}
       >
         {busy ? (
-          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : (
-          <FileText className="mr-1 h-3.5 w-3.5" aria-hidden />
+          <FileText className="h-3.5 w-3.5" aria-hidden />
         )}
         生成报告
       </Button>

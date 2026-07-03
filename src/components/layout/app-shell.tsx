@@ -53,7 +53,7 @@ function ShellInner({ children }: AppShellProps) {
           className="relative flex-1 pb-24 lg:pb-10"
           tabIndex={-1}
         >
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8 lg:py-10">
+          <div className="w-full px-4 py-6 lg:px-8 lg:py-10">
             {children}
           </div>
         </main>

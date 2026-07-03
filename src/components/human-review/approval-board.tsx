@@ -174,9 +174,9 @@ export function ApprovalBoard({ snapshot }: ApprovalBoardProps) {
                       onClick={() => void submit(item.id, "accept")}
                     >
                       {busyId === item.id ? (
-                        <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                       ) : (
-                        <Check className="mr-1 h-3.5 w-3.5" aria-hidden />
+                        <Check className="h-3.5 w-3.5" aria-hidden />
                       )}
                       {ACTION_LABEL.accept}
                     </Button>
@@ -195,7 +195,7 @@ export function ApprovalBoard({ snapshot }: ApprovalBoardProps) {
                       disabled={busyId === item.id}
                       onClick={() => void submit(item.id, "reject")}
                     >
-                      <X className="mr-1 h-3.5 w-3.5" aria-hidden />
+                      <X className="h-3.5 w-3.5" aria-hidden />
                       {ACTION_LABEL.reject}
                     </Button>
                     <Button
@@ -204,7 +204,7 @@ export function ApprovalBoard({ snapshot }: ApprovalBoardProps) {
                       disabled={busyId === item.id}
                       onClick={() => void submit(item.id, "return")}
                     >
-                      <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden />
+                      <RotateCcw className="h-3.5 w-3.5" aria-hidden />
                       {ACTION_LABEL.return}
                     </Button>
                     {!item.canBypass ? (

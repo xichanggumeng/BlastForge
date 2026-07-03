@@ -91,7 +91,9 @@ export function Button({
           {leftIcon}
         </span>
       ) : null}
-      <span>{children}</span>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        {children}
+      </span>
       {!loading && rightIcon ? (
         <span className="inline-flex items-center" aria-hidden>
           {rightIcon}

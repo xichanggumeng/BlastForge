@@ -71,14 +71,14 @@ export function ReportList({ reports }: { reports: ReadonlyArray<Report> }) {
                   size="sm"
                   onClick={() => setPreviewing(report)}
                 >
-                  <Eye className="mr-1 h-3.5 w-3.5" /> 预览
+                  <Eye className="h-3.5 w-3.5" /> 预览
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => openPrint(report.id)}
                 >
-                  <Printer className="mr-1 h-3.5 w-3.5" /> 打印 / PDF
+                  <Printer className="h-3.5 w-3.5" /> 打印 / PDF
                 </Button>
                 <a
                   href={`/api/reports?id=${report.id}&format=md`}
@@ -144,7 +144,7 @@ function ReportPreviewOverlay({
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => openPrint(report.id)}>
-              <Printer className="mr-1 h-3.5 w-3.5" /> 打印 / PDF
+              <Printer className="h-3.5 w-3.5" /> 打印 / PDF
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose}>
               关闭

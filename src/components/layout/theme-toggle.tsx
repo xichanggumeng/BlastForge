@@ -18,7 +18,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-md border border-border bg-surface p-0.5",
+        "inline-flex items-center gap-0.5 rounded-md border border-border bg-surface p-1",
         className,
       )}
       role="group"
@@ -40,10 +40,10 @@ export function ThemeToggle({ className }: { className?: string }) {
             onClick={() => setMode(key)}
             aria-pressed={active}
             aria-label={tip}
-            className="h-7 px-2 text-xs"
+            leftIcon={<ItemIcon className="h-3.5 w-3.5" aria-hidden />}
+            className="h-7 whitespace-nowrap px-2.5 text-xs"
           >
-            <ItemIcon className="h-3.5 w-3.5" aria-hidden />
-            <span className="hidden sm:inline">{tip}</span>
+            {tip}
           </Button>
         );
       })}
