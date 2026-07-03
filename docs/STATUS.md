@@ -1,8 +1,17 @@
 # 当前开发状态
 
-更新时间：2026-07-04（Phase 5 收官 — 知识库 / 引用 / 人工复核 / 报告 / Demo 串联完成；lint / typecheck / test / build 全部通过）
+更新时间：2026-07-04（Phase 5 收官 + Workflow 页面 Phase 3 可视化能力落地 — Vitest 136/136；lint / typecheck / build 全部通过）
 
 ## 已完成
+
+### 2026-07-04 追加：Workflow Phase 3 强化
+
+- `useWorkflowStream` Hook（`fetch + ReadableStream` SSE；`processLine` 解析四类帧）
+- `applyEventsToSteps` 纯函数：事件 → 节点状态映射；事件驱动 running 节点脉冲 / blocked 节点注意力动画
+- `WorkflowViewerClient` 实时流 Tab：启动演示按钮组（Standard / Complex / High-Risk × `replay=1`）+ 停止 / 重置；保留历史 Run 二级 Tab
+- `review.blocked` 自动：顶部红色警告卡 + 自动 focus `review_safety` 节点 + 「演示回放模式」徽章提前显示
+- 第四张 FeatureCard「节点详情面板」；PageHeader 增加 `DemoModeBadge`
+- 新增测试 `apply-events-to-steps.test.ts`（5）+ `use-workflow-stream.test.ts`（7）
 
 ### Phase 1（视觉与骨架）
 
@@ -94,7 +103,7 @@
 - `/dashboard` 完整智能驾驶舱（含演示模式入口）
 - `/planner` **完整 Demo 工作台**（Agent Workflow 可选启用 + 自动降级 Demo Replay + 引用面板）
 - `/agents` **Agent 工作台（完整版）**
-- `/workflow` **Workflow 执行视图（React Flow）**（预录制 + 真实 Run 双 Tab + 节点详情 + 引用面板）
+- `/workflow` **Workflow 执行视图（React Flow）**（预录制 Run + 实时流 Tab；启动演示按钮组驱动 SSE；事件流驱动节点脉冲 / blocked 注意力动画；review.blocked 自动警告卡 + 自动 focus 节点）
 - `/knowledge` **完整知识库页面**（文档列表 + 检索测试 + Citation Panel）
 - `/approvals` **人工复核中心**（accept / modify / reject / return + 评论）
 - `/reports` **报告中心**（列表 + 预览 + 打印 / PDF / MD / JSON 导出）
@@ -113,7 +122,7 @@
 - 知识库：8 文档 + 17 chunk
 - Safety / Approval / Report：完整模块
 - 演示基础设施：动效 / 图表 / Workflow / 引用 / 报告
-- 测试：Vitest 124 条
+- 测试：Vitest 136 条（Phase 5 + Workflow Phase 3 强化）
 
 ## 已知问题
 
@@ -122,6 +131,7 @@
 - 移动端底部导航默认隐藏 `Workflow` 一项（会议演示侧建议通过侧栏打开）
 - 浅色主题切换时图表颜色需刷新页面（缓存在 `chart-theme.ts`）
 - 2026-07-04：`SidebarProvider` 之前以 `localStorage` 作为 `useState` 初值，导致 SSR 与 client 首屏渲染 `collapsed` 不一致，连带 `Navbar` 的 `aria-label` / `aria-pressed` 与 `PanelLeft` / `PanelLeftClose` 图标触发 React Hydration 报错。修复方式：把读取 `localStorage` 的逻辑从 `useState` 初值下沉到 `useEffect`，SSR/Client 初值统一为 `false`，hydration 完成后再同步用户偏好。
+- 2026-07-04：Workflow 页面新增 SSE Hook 与实时流 Tab；事件驱动的 running / blocked 节点动画已落地，运行中脉冲与注意力动画可通过 DevTools 的「Emulate CSS prefers-reduced-motion: reduce」验证降级行为。
 
 ## 下一建议任务
 

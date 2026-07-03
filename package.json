@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "export:code": "node scripts/export-code-docs.mjs",
+    "export:pdf": "node scripts/export-md-to-pdf.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

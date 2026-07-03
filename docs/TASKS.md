@@ -69,6 +69,18 @@
 - [x] Agent 工作台 `/agents`
 - [x] Planner 接入
 - [x] 测试 Vitest
+- [x] **Workflow 页面 Phase 3 三项可视化能力落地**
+  - [x] `useWorkflowStream` Hook（原生 `fetch + ReadableStream` SSE；解析 `meta`/`workflow.event`/`workflow.summary`/`workflow.failed` 四种帧）
+  - [x] `applyEventsToSteps` 纯函数：把 `step.started` / `step.completed` / `review.blocked` / `workflow.completed|failed|cancelled` 增量映射到节点状态
+  - [x] `WorkflowViewerClient` 实时流 Tab：启动演示按钮组（Standard / Complex / High-Risk × `replay=1`）+ 停止 / 重置；保留历史 Run 二级 Tab
+  - [x] Running 节点脉冲 + Blocked 节点注意力动画（CSS keyframes + `prefers-reduced-motion` 降级）
+  - [x] Running 连线虚线流动效果
+  - [x] `review.blocked` 自动：顶部红色警告卡 + 自动选中 `review_safety` 节点 + 「演示回放模式」徽章提前显示
+  - [x] 节点详情面板保留 Tool / 引用 / Trace 摘要 + 新增 `outputSummary` 展示
+  - [x] 断线后可从 `/api/agent/runs/[id]` 恢复最终状态
+  - [x] 第四张 FeatureCard：「节点详情面板」
+  - [x] PageHeader 增加 `DemoModeBadge`
+  - [x] 新增测试 `apply-events-to-steps.test.ts`（5 条）+ `use-workflow-stream.test.ts`（7 条）
 
 ## Phase 5：知识库 / 引用 / 审批 / 报告 / Demo 串联
 

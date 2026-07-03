@@ -4,6 +4,13 @@
  * 渲染当前 Run / 预录制 Run 的 Workflow 节点 + 连线 + 状态；
  * 支持点击节点查看详情；running 节点脉冲；blocked / failed 视觉警示；
  * 移动端简化视图（Bottom Sheet）。
+ *
+ * Phase 3 强化：
+ * - 节点状态由 applyEventsToSteps(run, events) 实时计算，不再只依赖 run.steps 终态；
+ * - running 节点脉冲使用 CSS keyframes 配合 prefers-reduced-motion；
+ * - blocked 节点首次触达时附"注意力"边框动画（reduced-motion 关闭时降级为静态描边）；
+ * - running 连线改为虚线流动效果；
+ * - 父组件可通过 externalSelectedStepId / blockedHighlightSignal 强制选中并提示阻断。
  */
 
 'use client';
@@ -54,6 +61,23 @@ import type {
 import { CitationPanel } from '@/components/citations/citation-panel';
 import type { KnowledgeCitation } from '@/modules/knowledge/domain';
 
+import { applyEventsToSteps } from './apply-events-to-steps';
+
+/* ---------- Reduced Motion Hook ---------- */
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent): void => setReduced(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return reduced;
+}
+
 /* ---------- 节点自定义 ---------- */
 
 interface StepNodeData extends Record<string, unknown> {
@@ -66,10 +90,13 @@ interface StepNodeData extends Record<string, unknown> {
   citations: Citation[];
   toolCalls: { id: string; name: string; durationMs?: number }[];
   events: WorkflowEvent[];
+  /** 节点是否处于"被阻断"重点提示状态（来自外部 signal）。 */
+  attention?: boolean;
 }
 
 function StepNode({ data, selected }: NodeProps<Node<StepNodeData>>) {
   const status = data.status;
+  const reducedMotion = usePrefersReducedMotion();
   const isRunning = status === 'running';
   const isBlocked = status === 'blocked';
   const isFailed = status === 'failed';
@@ -101,31 +128,45 @@ function StepNode({ data, selected }: NodeProps<Node<StepNodeData>>) {
       : isFailed
         ? X
       : isWarning
-        ? ShieldAlert
-        : isSucceeded
-          ? Check
-          : CircleDashed;
+          ? ShieldAlert
+          : isSucceeded
+            ? Check
+            : CircleDashed;
+
+  // 事件驱动的运行脉冲（仅在 reduced-motion 关闭时启用动画）
+  const pulseActive = isRunning && !reducedMotion;
+  // blocked 节点的"阻断注意力"动画，仅在刚刚发生阻断时短暂显示
+  const blockAttention = isBlocked && data.attention && !reducedMotion;
 
   return (
     <div
+      data-running={isRunning || undefined}
+      data-blocked={isBlocked || undefined}
       className={cn(
         'flex min-w-[180px] max-w-[220px] flex-col gap-1 rounded-lg border bg-surface px-3 py-2 text-left shadow-sm transition-colors',
         toneClass,
         selected && 'ring-2 ring-primary/60',
+        pulseActive && 'wf-step-running',
+        blockAttention && 'wf-step-blocked-attention',
       )}
     >
       <div className="flex items-center gap-2">
         <span
           className={cn(
             'inline-flex h-6 w-6 items-center justify-center rounded-md border bg-surface/70',
-            isRunning && 'animate-pulse',
+            isRunning && !reducedMotion && 'animate-pulse',
           )}
         >
-          <Icon className={cn('h-3.5 w-3.5', isRunning && 'animate-spin')} aria-hidden />
+          <Icon
+            className={cn('h-3.5 w-3.5', isRunning && !reducedMotion && 'animate-spin')}
+            aria-hidden
+          />
         </span>
         <span className="text-xs font-semibold">{data.label}</span>
       </div>
-      <p className="line-clamp-2 text-[10px] text-muted-foreground">{data.description}</p>
+      <p className="line-clamp-2 text-[10px] text-muted-foreground">
+        {data.description}
+      </p>
       <div className="flex items-center gap-1.5 text-[10px]">
         <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono">
           {data.agentId}
@@ -146,7 +187,9 @@ function StepNode({ data, selected }: NodeProps<Node<StepNodeData>>) {
       ) : isBlocked ? (
         <span className="text-[10px] text-danger">Safety Reviewer 阻断</span>
       ) : typeof data.durationMs === 'number' ? (
-        <span className="text-[10px] text-muted-foreground">{data.durationMs} ms</span>
+        <span className="text-[10px] text-muted-foreground">
+          {data.durationMs} ms
+        </span>
       ) : null}
     </div>
   );
@@ -172,11 +215,39 @@ interface WorkflowFlowProps {
   events: WorkflowEvent[];
   traces: FrontendTraceSummary[];
   citations: Citation[];
+  /** 外部强制选中的 Step stepId（用于 review.blocked 自动 focus）。 */
+  externalSelectedStepId?: string | null;
+  /** 来自事件流的 blocked signal，用于为节点标记"刚刚被阻断"的注意力。 */
+  blockedHighlightSignal?: {
+    stepId: string;
+    timestamp: number;
+  } | null;
 }
 
-export function WorkflowFlow({ run, events, traces, citations }: WorkflowFlowProps) {
+export function WorkflowFlow({
+  run,
+  events,
+  traces,
+  citations,
+  externalSelectedStepId,
+  blockedHighlightSignal,
+}: WorkflowFlowProps) {
+  // 事件驱动：把 events 应用到 run.steps 上，得到当前可见状态
+  const liveSteps = useMemo(
+    () => applyEventsToSteps(run, events),
+    [run, events],
+  );
+
+  const attentionMap = useMemo(() => {
+    if (!blockedHighlightSignal) return new Map<string, number>();
+    return new Map([[blockedHighlightSignal.stepId, blockedHighlightSignal.timestamp]]);
+  }, [blockedHighlightSignal]);
+
   const toolCalls = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; durationMs?: number }>();
+    const map = new Map<
+      string,
+      { id: string; name: string; durationMs?: number }
+    >();
     for (const evt of events) {
       if (evt.type === 'tool.called') {
         const id = String(evt.payload['toolCallId'] ?? evt.eventId);
@@ -230,7 +301,7 @@ export function WorkflowFlow({ run, events, traces, citations }: WorkflowFlowPro
   }, [events, citations]);
 
   const initialNodes = useMemo<Node<StepNodeData>[]>(() => {
-    return run.steps.map((step, idx) => ({
+    return liveSteps.map((step, idx) => ({
       id: step.id,
       type: 'step',
       position: { x: 0, y: idx * 130 },
@@ -243,50 +314,80 @@ export function WorkflowFlow({ run, events, traces, citations }: WorkflowFlowPro
         status: step.status,
         citations: citationsByStep.get(step.stepId) ?? [],
         toolCalls: Array.from(toolCalls.values()).filter((t) => {
-          const ev = events.find((e) => e.type === 'tool.called' && e.payload['toolCallId'] === t.id);
+          const ev = events.find(
+            (e) =>
+              e.type === 'tool.called' && e.payload['toolCallId'] === t.id,
+          );
           return ev?.stepId === step.stepId;
         }),
         events: eventsByStep.get(step.stepId) ?? [],
+        attention: attentionMap.has(step.stepId),
       },
     }));
-  }, [run.steps, toolCalls, eventsByStep, citationsByStep, events]);
+  }, [
+    liveSteps,
+    toolCalls,
+    eventsByStep,
+    citationsByStep,
+    events,
+    attentionMap,
+  ]);
 
   const initialEdges = useMemo<Edge[]>(() => {
     const edges: Edge[] = [];
-    for (let i = 0; i < run.steps.length - 1; i++) {
-      const cur = run.steps[i];
-      const nxt = run.steps[i + 1];
+    for (let i = 0; i < liveSteps.length - 1; i++) {
+      const cur = liveSteps[i];
+      const nxt = liveSteps[i + 1];
       if (!cur || !nxt) continue;
       edges.push({
         id: `${cur.id}->${nxt.id}`,
         source: cur.id,
         target: nxt.id,
         type: 'smoothstep',
-        markerEnd: { type: MarkerType.ArrowClosed, color: statusEdgeColor(cur.status, false) },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: statusEdgeColor(cur.status, false),
+        },
         style: {
           stroke: statusEdgeColor(cur.status, false),
           strokeWidth: cur.status === 'running' ? 2 : 1.4,
+          ...(cur.status === 'running'
+            ? { strokeDasharray: '6 4' }
+            : {}),
         },
+        animated: cur.status === 'running',
       });
     }
     return edges;
-  }, [run.steps]);
+  }, [liveSteps]);
 
   const [nodes, , onNodesChange] = useNodesState<Node<StepNodeData>>(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState<Edge>(initialEdges);
 
   useEffect(() => {
     onNodesChange(
-      initialNodes.map((n) => ({ id: n.id, type: 'position', position: n.position })) as never,
+      initialNodes.map((n) => ({
+        id: n.id,
+        type: 'position',
+        position: n.position,
+      })) as never,
     );
   }, [initialNodes, onNodesChange]);
 
-  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(
+    externalSelectedStepId ?? null,
+  );
+
+  useEffect(() => {
+    if (externalSelectedStepId) {
+      setSelectedStepId(externalSelectedStepId);
+    }
+  }, [externalSelectedStepId]);
 
   const selectedStep = useMemo(() => {
     if (!selectedStepId) return null;
-    return run.steps.find((s) => s.id === selectedStepId) ?? null;
-  }, [run.steps, selectedStepId]);
+    return liveSteps.find((s) => s.id === selectedStepId) ?? null;
+  }, [liveSteps, selectedStepId]);
 
   const selectedCitations = useMemo(() => {
     if (!selectedStep) return [] as Citation[];
@@ -294,9 +395,12 @@ export function WorkflowFlow({ run, events, traces, citations }: WorkflowFlowPro
   }, [selectedStep, citationsByStep]);
 
   const selectedTools = useMemo(() => {
-    if (!selectedStep) return [] as { id: string; name: string; durationMs?: number }[];
+    if (!selectedStep)
+      return [] as { id: string; name: string; durationMs?: number }[];
     return Array.from(toolCalls.values()).filter((t) => {
-      const ev = events.find((e) => e.type === 'tool.called' && e.payload['toolCallId'] === t.id);
+      const ev = events.find(
+        (e) => e.type === 'tool.called' && e.payload['toolCallId'] === t.id,
+      );
       return ev?.stepId === selectedStep.stepId;
     });
   }, [selectedStep, toolCalls, events]);
@@ -312,16 +416,59 @@ export function WorkflowFlow({ run, events, traces, citations }: WorkflowFlowPro
 
   return (
     <ReactFlowProvider>
+      <style jsx global>{`
+        @keyframes wf-running-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 35%, transparent); }
+          50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--primary) 10%, transparent); }
+        }
+        .wf-step-running {
+          animation: wf-running-pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes wf-blocked-attention {
+          0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 50%, transparent); }
+          30% { box-shadow: 0 0 0 8px color-mix(in oklch, var(--danger) 15%, transparent); }
+          100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 0%, transparent); }
+        }
+        .wf-step-blocked-attention {
+          animation: wf-blocked-attention 1.2s ease-out 1;
+        }
+        @keyframes wf-edge-flow {
+          0% { stroke-dashoffset: 0; }
+          100% { stroke-dashoffset: -20; }
+        }
+        .react-flow__edge.animated path,
+        .react-flow__edge path[stroke-dasharray] {
+          animation: wf-edge-flow 1.2s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .wf-step-running,
+          .wf-step-blocked-attention,
+          .react-flow__edge.animated path,
+          .react-flow__edge path[stroke-dasharray] {
+            animation: none !important;
+          }
+        }
+      `}</style>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={run.replay ? 'warning' : 'primary'} size="sm">
             {run.replay ? '演示回放模式' : '真实调用'}
           </Badge>
-          <Badge tone={run.status === 'completed' ? 'success' : run.status === 'blocked' ? 'danger' : 'outline'} size="sm">
+          <Badge
+            tone={
+              run.status === 'completed'
+                ? 'success'
+                : run.status === 'blocked'
+                  ? 'danger'
+                  : 'outline'
+            }
+            size="sm"
+          >
             Run {run.id.slice(-6)} · {run.status}
           </Badge>
           <span className="text-xs text-muted-foreground">
-            {run.steps.length} 个步骤 · {events.length} 个事件 · {traces.length} 条 Trace
+            {liveSteps.length} 个步骤 · {events.length} 个事件 ·{' '}
+            {traces.length} 条 Trace
           </span>
         </div>
 
@@ -419,7 +566,10 @@ function StepDetailPanel({
     return (
       <Card padding="md" tone="muted">
         <div className="flex items-start gap-3">
-          <Sparkles className="mt-1 h-5 w-5 text-muted-foreground" aria-hidden />
+          <Sparkles
+            className="mt-1 h-5 w-5 text-muted-foreground"
+            aria-hidden
+          />
           <div className="flex flex-col gap-1">
             <h3 className="text-sm font-semibold">节点详情</h3>
             <p className="text-xs text-muted-foreground">
@@ -431,18 +581,22 @@ function StepDetailPanel({
     );
   }
 
-  const tone = step.status === 'blocked' || step.status === 'failed'
-    ? 'danger'
-    : step.status === 'running'
-      ? 'primary'
-      : step.status === 'succeeded'
-        ? 'success'
-        : step.status === 'warning'
-          ? 'warning'
-          : 'outline';
+  const tone =
+    step.status === 'blocked' || step.status === 'failed'
+      ? 'danger'
+      : step.status === 'running'
+        ? 'primary'
+        : step.status === 'succeeded'
+          ? 'success'
+          : step.status === 'warning'
+            ? 'warning'
+            : 'outline';
 
   return (
-    <Card padding={compact ? 'md' : 'md'} className={cn('gap-2', compact && 'lg:hidden')}>
+    <Card
+      padding={compact ? 'md' : 'md'}
+      className={cn('gap-2', compact && 'lg:hidden')}
+    >
       <header className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{step.label}</h3>
         <Badge tone={tone as never} size="sm">
@@ -473,9 +627,14 @@ function StepDetailPanel({
               <li className="text-muted-foreground">该步骤未触发 Tool。</li>
             ) : (
               tools.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-2 rounded border border-border bg-surface px-2 py-1">
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded border border-border bg-surface px-2 py-1"
+                >
                   <span className="font-mono">{t.name}</span>
-                  <span className="text-muted-foreground">{t.durationMs ?? '-'} ms</span>
+                  <span className="text-muted-foreground">
+                    {t.durationMs ?? '-'} ms
+                  </span>
                 </li>
               ))
             )}
@@ -500,11 +659,22 @@ function StepDetailPanel({
             <li className="text-muted-foreground">无 Trace</li>
           ) : (
             traces.map((t) => (
-              <li key={t.id} className="rounded border border-border bg-surface px-2 py-1.5">
+              <li
+                key={t.id}
+                className="rounded border border-border bg-surface px-2 py-1.5"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono">{t.agentId ?? '-'} · {t.promptVersion}</span>
+                  <span className="font-mono">
+                    {t.agentId ?? '-'} · {t.promptVersion}
+                  </span>
                   <Badge
-                    tone={t.status === 'succeeded' ? 'success' : t.status === 'failed' ? 'danger' : 'outline'}
+                    tone={
+                      t.status === 'succeeded'
+                        ? 'success'
+                        : t.status === 'failed'
+                          ? 'danger'
+                          : 'outline'
+                    }
                     size="sm"
                   >
                     {t.status}
@@ -521,7 +691,8 @@ function StepDetailPanel({
 
       {step.errorMessage ? (
         <div className="rounded-md border border-danger/40 bg-danger/5 p-2 text-xs text-danger">
-          <AlertOctagon className="mr-1 inline h-3.5 w-3.5" /> {step.errorCode} · {step.errorMessage}
+          <AlertOctagon className="mr-1 inline h-3.5 w-3.5" /> {step.errorCode} ·{' '}
+          {step.errorMessage}
         </div>
       ) : null}
     </Card>
@@ -531,28 +702,28 @@ function StepDetailPanel({
 export { ShieldCheck, PauseCircle };
 
 function toKnowledgeCitation(c: Citation): KnowledgeCitation {
-  const knownSourceTypes: ReadonlyArray<KnowledgeCitation["sourceType"]> = [
-    "knowledge",
-    "regulation",
-    "case",
-    "material",
+  const knownSourceTypes: ReadonlyArray<KnowledgeCitation['sourceType']> = [
+    'knowledge',
+    'regulation',
+    'case',
+    'material',
   ];
   const sourceType = (
     knownSourceTypes as ReadonlyArray<string>
-  ).includes(c.sourceType ?? "")
-    ? (c.sourceType as KnowledgeCitation["sourceType"])
-    : "knowledge";
-  const knownCategories: ReadonlyArray<KnowledgeCitation["category"]> = [
-    "explosive",
-    "water",
-    "environment",
-    "cost",
-    "risk-review",
-    "general",
+  ).includes(c.sourceType ?? '')
+    ? (c.sourceType as KnowledgeCitation['sourceType'])
+    : 'knowledge';
+  const knownCategories: ReadonlyArray<KnowledgeCitation['category']> = [
+    'explosive',
+    'water',
+    'environment',
+    'cost',
+    'risk-review',
+    'general',
   ];
   const category = (knownCategories as ReadonlyArray<string>).includes(c.category)
-    ? (c.category as KnowledgeCitation["category"])
-    : "general";
+    ? (c.category as KnowledgeCitation['category'])
+    : 'general';
   return {
     id: c.id,
     documentId: c.documentId,

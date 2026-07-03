@@ -3,14 +3,25 @@
  * - 展示预录制 Run（种子数据）与最近 Run（通过 /api/agent/runs 拉取）；
  * - 通过 React Flow 渲染节点 / 连线 / 状态；
  * - 移动端使用 Bottom Sheet 风格简化视图（由 WorkflowFlow 内置）。
+ *
+ * Phase 3 落地后，本页只承担：页面标题、能力摘要卡、Two-Tab 容器；具体能力在
+ * `WorkflowViewerClient` 中通过 useWorkflowStream 订阅 /api/agent/runs/stream，
+ * 由 workflow.* / agent.* / tool.* 事件直接驱动节点状态与脉冲。
  */
 
-import { Activity, Eye, Network } from 'lucide-react';
+import { Activity, Eye, Network, MousePointerClick } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { DemoModeBadge } from '@/components/feedback/demo-mode-badge';
 import { PageHeader } from '@/components/feedback/page-header';
 import { SectionHeader } from '@/components/feedback/section-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { WorkspacePage } from '@/components/layout/workspace-page';
 import { WorkflowViewerClient } from '@/components/workflow/workflow-viewer-client';
 
@@ -32,6 +43,7 @@ export default function WorkflowPage() {
           <>
             <Badge tone="primary">React Flow</Badge>
             <Badge tone="outline">{DEMO_REPLAY_RUNS.length} 预录制 Run</Badge>
+            <DemoModeBadge />
           </>
         }
       />
@@ -43,21 +55,26 @@ export default function WorkflowPage() {
           title="可视化能力"
           description="点击节点查看 Tool、引用、Trace 摘要；running 节点脉冲；高风险自动 blocked。"
         />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <FeatureCard
             icon={Network}
             title="节点 + 连线"
-            description="10 个步骤按顺序排列；状态驱动颜色；Pulse 动画仅在 running 时启用。"
+            description="10 个步骤按顺序排列；状态驱动颜色；Pulse 动画仅在 running 时启用，并尊重 prefers-reduced-motion。"
           />
           <FeatureCard
             icon={Activity}
             title="事件流驱动"
-            description="订阅 workflow.* / agent.* / tool.* 事件；不依赖单次连接保存唯一结果。"
+            description="订阅 workflow.* / agent.* / tool.* 事件；断线后可从 RunRepository 恢复最终状态。"
           />
           <FeatureCard
             icon={Eye}
             title="降级与回放"
-            description="Provider 不可用时自动回放预录制 Run；页面明确标识“演示回放模式”。"
+            description="Provider 不可用时自动回放预录制 Run；显式 replay=1 时强制走回放；顶部徽章明确标识。"
+          />
+          <FeatureCard
+            icon={MousePointerClick}
+            title="节点详情面板"
+            description="点击节点查看 Tool 调用列表 / 知识引用 / Trace 摘要 / 输出摘要；review.blocked 自动 focus 对应节点。"
           />
         </div>
       </section>
@@ -83,9 +100,7 @@ function FeatureCard({
         </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
-        <Badge tone="outline">Phase 3</Badge>
-      </CardContent>
+      <CardContent />
     </Card>
   );
 }
