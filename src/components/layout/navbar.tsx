@@ -10,6 +10,7 @@ import { DemoModeBadge } from "@/components/feedback/demo-mode-badge";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "./sidebar-context";
 import { ThemeToggle } from "./theme-toggle";
+import { MobileAccessButton } from "./mobile-access-button";
 
 export function Navbar() {
   const { collapsed, toggleCollapsed, setMobileOpen } = useSidebar();
@@ -71,6 +72,7 @@ export function Navbar() {
 
       <div className="flex items-center gap-3">
         <DemoModeBadge className="hidden sm:inline-flex" />
+        <MobileAccessButton className="hidden md:inline-flex" />
         <ThemeToggle className="hidden sm:inline-flex" />
         <div className="flex items-center gap-1 sm:hidden">
           <DemoModeBadge />
