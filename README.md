@@ -148,8 +148,8 @@ Orchestrator 在 Provider 不可用 / 超时 / Schema 失败时会自动降级�
 | POST   | `/api/agent/runs/[id]/convert` | 转为 `PlanningRun` |
 | GET    | `/api/agent/approvals` | 列出全部待复核 / 单 Run 快照 |
 | POST   | `/api/agent/approvals` | 改变状态（accept / modify / reject / return） |
-| GET    | `/api/reports?format=md\|json\|html` | 报告（导出支持 MD / JSON / HTML） |
-| POST   | `/api/reports` | 生成报告 |
+| GET    | `/api/reports?format=md\|json\|html\|pdf` | 报告（导出支持 MD / JSON / HTML / **PDF**：服务端 puppeteer + 品牌封面 + 评分卡 + 引用卡） |
+| POST   | `/api/reports` | 生成报告（Body 必填 `runId`；Agent 模式传 `agentRunId`） |
 
 ---
 

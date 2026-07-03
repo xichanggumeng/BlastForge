@@ -4,6 +4,19 @@
 
 ## 已完成
 
+### 2026-07-04 追加：报告「未找到 Run」修复 + 可下载 PDF 报告
+
+- 修复 Planner「生成报告」按钮：把 `run.id`（`PlanningRun.id`）改为 `state.agentRunId ?? run.id`，Agent 模式下把真正的 `WorkflowRun.id`（`run-yn4l59` 形态）交给 `/api/reports`，消除 `RUN_NOT_FOUND`。
+- `/api/reports` 服务端 `projectRun()` 不再 `as unknown as PlanningRun` 强转；改为复用 `adaptToPlanningRun()`，与 `/api/agent/runs/[id]/convert` 走同一条从 WorkflowRun / 事件 / Trace → PlanningRun 的安全通路；citations 由运行事件 + adapter 引用合并去重。
+- 新增 `src/modules/report/infrastructure/pdf-renderer.ts`：单例 puppeteer 浏览器，调用 `exportHTML()` → `page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })`；失败抛 `PdfRenderError`（`PDF_RENDER_FAILED`）。
+- 新增 `pdf-renderer.test.ts`（3 条）：mock puppeteer 验证 HTML→PDF 调用链 / 失败抛错 / browser 复用。
+- `/api/reports?format=pdf` 输出 `application/pdf` + `attachment` 头；失败返回 502 + JSON 错误。
+- `exportHTML` 升级为品牌封面页：标题 + 状态徽章 + 演示回放徽章 + 报告编号 / Run / 时间 / 责任人 / 引用 / 章节元数据卡 + 责任边界声明；推荐 / 备选 / 风险方案以 CSS Grid 评分卡展示（无 ECharts 依赖，PDF 渲染不空白）；引用区与复核区卡片化；`@page` 注入页眉（报告编号 + 场景名）与页脚（页码）。
+- Planner 工作台「生成报告」按钮升级：成功后展示「下载 PDF」/「Markdown」/「JSON」三条入口；下载 PDF 走 `fetch + blob` 避免 `<a download>` 误存 JSON 错误页。
+- 报告中心 ReportList 与 PreviewOverlay 同步增加「下载 PDF」按钮（含 Loading 态与 aria-busy）。
+- 新增运行时依赖：`puppeteer`（与 `scripts/export-md-to-pdf.mjs` 已有的 dev-only 用法保持一致，本次进入运行时依赖）。
+- `npm install` 时 puppeteer 自动下载 Chromium；若网络隔离导致失败，浏览器「另存为 PDF」仍可用（`format=html`）。
+
 ### 2026-07-04 追加：Workflow Phase 3 强化
 
 - `useWorkflowStream` Hook（`fetch + ReadableStream` SSE；`processLine` 解析四类帧）

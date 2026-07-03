@@ -1,11 +1,23 @@
 "use client";
 
 /**
- * ReportList —— 列出所有已生成报告，支持预览 / 打印 / Markdown / JSON 导出。
+ * ReportList —— 列出所有已生成报告，支持预览 / 打印 / Markdown / JSON / PDF 导出。
+ *
+ * PDF 下载走 `/api/reports?id=&format=pdf`；
+ * 失败时由服务端返回 JSON 错误，浏览器 `<a download>` 仍会尝试下载——为避免误存 JSON，
+ * 这里点击时通过 fetch 探活，再走 attachment 下载。
  */
 
 import { useState } from "react";
-import { Eye, FileText, FileJson, FileType2, Printer } from "lucide-react";
+import {
+  Download,
+  Eye,
+  FileJson,
+  FileText,
+  FileType2,
+  Loader2,
+  Printer,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +42,40 @@ const STATUS_LABEL = {
 
 export function ReportList({ reports }: { reports: ReadonlyArray<Report> }) {
   const [previewing, setPreviewing] = useState<Report | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const downloadPdf = async (report: Report): Promise<void> => {
+    setDownloading(report.id);
+    setDownloadError(null);
+    try {
+      const res = await fetch(`/api/reports?id=${encodeURIComponent(report.id)}&format=pdf`);
+      if (!res.ok) {
+        const text = await res.text();
+        let message = `PDF 下载失败（HTTP ${res.status}）`;
+        try {
+          const parsed = JSON.parse(text) as { error?: { message?: string } };
+          if (parsed.error?.message) message = parsed.error.message;
+        } catch {
+          // 非 JSON
+        }
+        throw new Error(message);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${report.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "PDF 下载失败");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   return (
     <>
@@ -74,11 +120,25 @@ export function ReportList({ reports }: { reports: ReadonlyArray<Report> }) {
                   <Eye className="h-3.5 w-3.5" /> 预览
                 </Button>
                 <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void downloadPdf(report)}
+                  disabled={downloading === report.id}
+                  aria-busy={downloading === report.id}
+                >
+                  {downloading === report.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  下载 PDF
+                </Button>
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={() => openPrint(report.id)}
                 >
-                  <Printer className="h-3.5 w-3.5" /> 打印 / PDF
+                  <Printer className="h-3.5 w-3.5" /> 打印 / HTML
                 </Button>
                 <a
                   href={`/api/reports?id=${report.id}&format=md`}
@@ -103,12 +163,20 @@ export function ReportList({ reports }: { reports: ReadonlyArray<Report> }) {
                   <FileText className="h-3.5 w-3.5" /> HTML（新窗口）
                 </a>
               </div>
+              {downloadError && downloading === null ? (
+                <p className="mt-2 text-[11px] text-danger">{downloadError}</p>
+              ) : null}
             </CardContent>
           </Card>
         ))}
       </div>
       {previewing ? (
-        <ReportPreviewOverlay report={previewing} onClose={() => setPreviewing(null)} />
+        <ReportPreviewOverlay
+          report={previewing}
+          downloading={downloading === previewing.id}
+          onClose={() => setPreviewing(null)}
+          onDownload={() => void downloadPdf(previewing)}
+        />
       ) : null}
     </>
   );
@@ -123,9 +191,13 @@ function openPrint(reportId: string) {
 function ReportPreviewOverlay({
   report,
   onClose,
+  onDownload,
+  downloading,
 }: {
   report: Report;
   onClose: () => void;
+  onDownload: () => void;
+  downloading: boolean;
 }) {
   return (
     <div
@@ -143,8 +215,22 @@ function ReportPreviewOverlay({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={onDownload}
+              disabled={downloading}
+              aria-busy={downloading}
+            >
+              {downloading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Download className="h-3.5 w-3.5" aria-hidden />
+              )}
+              下载 PDF
+            </Button>
             <Button size="sm" variant="outline" onClick={() => openPrint(report.id)}>
-              <Printer className="h-3.5 w-3.5" /> 打印 / PDF
+              <Printer className="h-3.5 w-3.5" /> 打印 / HTML
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose}>
               关闭

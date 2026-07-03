@@ -69,6 +69,17 @@
 - [x] Agent 工作台 `/agents`
 - [x] Planner 接入
 - [x] 测试 Vitest
+- [x] **报告「未找到 Run」修复 + 可下载 PDF 报告**
+  - [x] Planner 「生成报告」修复：传 `state.agentRunId ?? run.id`，消除 `RUN_NOT_FOUND`
+  - [x] `/api/reports` `projectRun()` 改用 `adaptToPlanningRun()`，去掉 `as unknown as PlanningRun` 强转
+  - [x] 新增 `src/modules/report/infrastructure/pdf-renderer.ts`：单例 puppeteer + exportHTML → A4 PDF
+  - [x] 新增 `pdf-renderer.test.ts`（3 条）
+  - [x] `/api/reports?format=pdf` 支持 `application/pdf` 流式下载 + 502 PDF_RENDER_FAILED 兜底
+  - [x] `exportHTML` 品牌封面页 + 评分卡 + 引用卡 + 复核卡 + `@page` 页眉页脚
+  - [x] Planner 工作台「下载 PDF / Markdown / JSON」二级入口（fetch + blob）
+  - [x] ReportList 与 PreviewOverlay 「下载 PDF」按钮 + Loading 态 + aria-busy
+  - [x] `package.json` 增加 `puppeteer` 运行时依赖
+  - [x] `npm run lint` / `typecheck` / `test` / `build` 全部通过
 - [x] **Workflow 页面 Phase 3 三项可视化能力落地**
   - [x] `useWorkflowStream` Hook（原生 `fetch + ReadableStream` SSE；解析 `meta`/`workflow.event`/`workflow.summary`/`workflow.failed` 四种帧）
   - [x] `applyEventsToSteps` 纯函数：把 `step.started` / `step.completed` / `review.blocked` / `workflow.completed|failed|cancelled` 增量映射到节点状态

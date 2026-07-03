@@ -196,7 +196,7 @@ describe("Exporters", () => {
     expect(md).toContain("责任边界");
   });
 
-  it("HTML 导出含 <html> 标签与 CSS 打印样式", () => {
+  it("HTML 导出含 <html> 标签与 CSS 打印样式 + 封面 + @page 页眉页脚", () => {
     const report = buildReport({
       run: makeRun(),
       citations: makeCitations(),
@@ -206,6 +206,13 @@ describe("Exporters", () => {
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("@media print");
     expect(html).toContain("责任边界");
+    expect(html).toMatch(/<section[^>]*class="[^"]*\bcover\b/); // 封面页存在
+    expect(html).toContain("class=\"cover report-section\"");
+    expect(html).toContain("@page"); // 分页与页码
+    expect(html).toContain("counter(page)"); // 页码
+    expect(html).toContain("推荐 / 备选 / 风险方案"); // 评分卡章节标题
+    expect(html).toContain(".scheme-card"); // 评分卡 CSS
+    expect(html).toContain(".citation-card"); // 引用卡 CSS
   });
 
   it("JSON 导出是合法 JSON", () => {

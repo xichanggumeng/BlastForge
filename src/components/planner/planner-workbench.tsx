@@ -398,6 +398,7 @@ export function PlannerWorkbench({ initialPresetId, agentMode = false }: Planner
             run={run}
             citations={citations}
             replay={'replay' in state ? state.replay : false}
+            agentRunId={'agentRunId' in state ? state.agentRunId : null}
           />
         </section>
       </div>
@@ -720,6 +721,7 @@ function RunSummarySidebar({
   run,
   citations,
   replay,
+  agentRunId,
 }: {
   state: {
     phase: string;
@@ -731,6 +733,8 @@ function RunSummarySidebar({
   run: PlanningRun | null;
   citations?: ReadonlyArray<import("@/modules/agent-runtime/core/contracts").Citation>;
   replay?: boolean;
+  /** Agent 模式下当前 Workflow Run id；本地 Planner 模式为 null。 */
+  agentRunId: string | null;
 }) {
   if (!run) {
     return (
@@ -786,7 +790,12 @@ function RunSummarySidebar({
             </Link>
           </Button>
         ) : null}
-        <GenerateReportButton runId={run?.id ?? null} replay={replay} />
+        <GenerateReportButton
+          runId={agentRunId}
+          planningRun={run}
+          citations={citations}
+          replay={replay}
+        />
       </Card>
       <SchemeDetailPanel
         run={state.run ?? run}
