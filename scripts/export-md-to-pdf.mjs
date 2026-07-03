@@ -16,6 +16,17 @@ const SRC_DIR = path.join(ROOT, 'docs', 'exports');
 const OUT_DIR = path.join(ROOT, 'docs', 'exports.pdf');
 const STYLE_PATH = path.join(ROOT, 'bin', 'pdf-style.css');
 
+// 图片格式 → MIME 映射。导出 PDF 时通过 base64 data URI 把图片直接嵌进 HTML，
+// 完全不依赖 file:// 协议，绕开 Chromium 的"禁止加载本地资源"拦截。
+const IMG_MIME = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+};
+
 const PRINT_CSS = `
 @page { size: A4; margin: 18mm 14mm; }
 * { box-sizing: border-box; }
@@ -124,7 +135,32 @@ function decorateIndentedLabels(html) {
     .replace(/<p>\s{4}代码：<\/p>/g, '<p class="fb-code-label">代码：</p>');
 }
 
-function mdToHtml(markdown, cssText, rootDir) {
+// 把 Markdown 里指向 ./public/ 或 ../../public/ 的 <img src> 替换为 base64 data URI。
+// 不走 file:// 协议，避免 Chromium 默认拦截本地资源导致 PDF 里图片丢失。
+async function inlineImages(body, rootDir) {
+  const publicAbs = path.resolve(rootDir, 'public');
+  const re = /<img([^>]*?)src="(\.\/public\/|\.\.\/\.\.\/public\/|public\/)([^"]+)"/g;
+  const matches = [...body.matchAll(re)];
+  if (matches.length === 0) return body;
+
+  let inlined = 0;
+  for (const m of matches) {
+    const rel = m[3];
+    const filePath = path.resolve(publicAbs, rel);
+    const ext = path.extname(filePath).toLowerCase();
+    const mime = IMG_MIME[ext];
+    if (!mime || !existsSync(filePath)) continue;
+    const buf = await readFile(filePath);
+    const dataUri = 'data:' + mime + ';base64,' + buf.toString('base64');
+    body = body.replace(m[0], m[0].replace(/src="[^"]+"/, 'src="' + dataUri + '"'));
+    inlined++;
+  }
+  if (inlined > 0) console.log('[export-pdf] 已 inline ' + inlined + ' 张图为 base64 data URI');
+  return body;
+}
+
+// 异步包装：先 inline 图片，再返回完整 HTML。
+async function buildHtml(markdown, cssText, rootDir) {
   const md = new MarkdownIt({
     html: true,
     linkify: true,
@@ -135,22 +171,14 @@ function mdToHtml(markdown, cssText, rootDir) {
       return '<pre><code' + cls + '>' + esc + '\n</code></pre>';
     },
   });
-  const body = md.render(markdown);
-
-  // 把 ./public/、./bin/ 这类相对路径改写为绝对 file:// URL，
-  // 避免 Puppeteer + file:// 协议下"基准目录不固定"导致图片丢失。
-  const publicAbs = path.resolve(rootDir, 'public').replace(/\\/g, '/');
-  const rewrittenBody = body
-    .replace(/src="\.\/public\//g, `src="file:///${publicAbs}/`)
-    .replace(/src="\.\.\/\.\.\/public\//g, `src="file:///${publicAbs}/`)
-    .replace(/src="public\//g, `src="file:///${publicAbs}/`);
-
-  const html =
+  let body = md.render(markdown);
+  body = await inlineImages(body, rootDir);
+  return (
     '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">' +
     '<title>code-export</title>' +
     '<style>' + cssText + '</style>' +
-    '</head><body>' + decorateIndentedLabels(rewrittenBody) + '</body></html>';
-  return html;
+    '</head><body>' + decorateIndentedLabels(body) + '</body></html>'
+  );
 }
 
 async function main() {
@@ -183,14 +211,7 @@ async function main() {
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--font-render-hinting=none',
-      // 允许 file:// 协议加载其他本地文件（图片、CSS 等），
-      // 否则 Export PDF 时相对路径图片会被 Chromium 拦截为 "Not allowed to load local resource"
-      '--allow-file-access-from-files',
-    ],
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
   });
   let ok = 0;
   let failed = 0;
@@ -200,9 +221,9 @@ async function main() {
       const outputPdf = path.join(OUT_DIR, name.replace(/\.md$/i, '.pdf'));
       try {
         const md = await readFile(inputMd, 'utf8');
-        const html = mdToHtml(md, css, ROOT);
+        const html = await buildHtml(md, css, ROOT);
         const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+        await page.setContent(html, { waitUntil: 'load', timeout: 60000 });
         await page.pdf({
           path: outputPdf,
           format: 'A4',
