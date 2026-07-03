@@ -184,3 +184,4 @@
 - [x] 检查敏感信息（仅服务端读取 Key）
 - [x] 检查 Logo.jpg / Icon.ico 使用
 - [x] 检查导航无 404
+- [x] 修复 SidebarProvider hydration mismatch（localStorage 不再作为 useState 初值，下沉到 useEffect）

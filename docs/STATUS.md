@@ -121,6 +121,7 @@
 - `PresentationScriptBar` 已实现；当前默认未自动播放，避免「假演示」
 - 移动端底部导航默认隐藏 `Workflow` 一项（会议演示侧建议通过侧栏打开）
 - 浅色主题切换时图表颜色需刷新页面（缓存在 `chart-theme.ts`）
+- 2026-07-04：`SidebarProvider` 之前以 `localStorage` 作为 `useState` 初值，导致 SSR 与 client 首屏渲染 `collapsed` 不一致，连带 `Navbar` 的 `aria-label` / `aria-pressed` 与 `PanelLeft` / `PanelLeftClose` 图标触发 React Hydration 报错。修复方式：把读取 `localStorage` 的逻辑从 `useState` 初值下沉到 `useEffect`，SSR/Client 初值统一为 `false`，hydration 完成后再同步用户偏好。
 
 ## 下一建议任务
 

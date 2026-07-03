@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -21,18 +22,21 @@ const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 const STORAGE_KEY = "blastforge.sidebar.collapsed";
 
-function readInitialCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsedState] = useState<boolean>(readInitialCollapsed);
+  // SSR 与 client 首屏渲染必须完全一致，初值固定为 false，
+  // 真正从 localStorage 读取放到 effect 中，避免 hydration mismatch。
+  const [collapsed, setCollapsedState] = useState<boolean>(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(STORAGE_KEY) === "true") {
+        setCollapsedState(true);
+      }
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   const setCollapsed = useCallback((next: boolean) => {
     setCollapsedState(next);
