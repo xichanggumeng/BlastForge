@@ -1,6 +1,6 @@
 # 当前开发状态
 
-更新时间：2026-07-04（Phase 2 中段）
+更新时间：2026-07-04（Phase 2 收官 / Session 3 落定）
 
 ## 已完成
 
@@ -28,16 +28,31 @@
 - 品牌展示首页完整化：Hero（含 9 节点 Agent 协作网络） / Metrics / Flow / Capabilities / 6 节点紧凑网络 / Agent Pool / Safety / Architecture / CTA / Footer
 - Dashboard 类型与 `loadDashboardSnapshot` 集中数据源（Phase 3 接入真实 Run 时可直接替换 loader）
 
+### Phase 2 / Session 3 — 参数规划核心工作台
+
+- `src/modules/parameter-planning/` 落地 `domain / infrastructure` 分层与纯函数 Planner
+- Zod 契约：`BlastScenarioInput` / `NormalizedParameterSet` / `PlanningRun` / `Scheme` / `SchemeScore` / `RiskItem` / `ReviewRequirement` 等；预留 `SourceKind` 字段
+- 确定性 Demo Planner：`normalizeParameters` / `runRulePrecheck` / `planParameters` / `calculateSchemeScore` / `collectRisks` / `collectReviewRequirements` / `analyzeSensitivity`
+- 三类预设场景：常规 / 复杂约束 / 高风险拦截；高风险自动进入 `blocked`
+- Repository 接口 + In-Memory Demo 实现 + Drizzle Schema 蓝图；**无数据库可启动**
+- `PlannerWorkbench`：Desktop 三栏（场景输入 / 方案与图表 / 风险与下一步），Mobile 步骤式（场景输入 → 参数确认 → 执行规划 → 方案对比 → 风险与确认）
+- 表单 12 字段（React Hook Form + Zod），含草稿自动保存、单位、说明、必填 / 区间校验
+- 6 步 Timeline（`validate_input → await_human_review`），可取消 / 重置，高风险自动 blocked
+- 三类图表（雷达 / 柱图 / 敏感性热力图），均 ECharts 动态导入 + Tooltip 业务含义 + 选中方案联动
+- Zustand `useSelectionStore` / `usePlannerUIStore` 分片；`/planner?preset=&scheme=&chart=` URL 同步
+- `vitest` 35/35 通过；`typecheck` / `lint`（0 errors）/ `build`（9 routes）全部通过
+
 ## 正在进行
 
-- Phase 2 余下：参数录入表单 / Zod Schema / 多方案对比中心（推迟到 Session 3）
-- Phase 3：DeepSeek Provider Adapter / Agent Registry / Workflow Engine
+- Phase 3：DeepSeek Provider Adapter / Agent Runtime 接入现有 Planner 契约（详见 `docs/handoffs/session-3.md` §4）
+- `PresentationScriptBar` 挂载到驾驶舱 / 方案对比页（推迟到 Session 4+）
+- 图表主题随 `data-theme` 失效（推迟到 Session 4+）
 
 ## 当前可运行页面
 
 - `/` 完整 Showcase Landing Page
 - `/dashboard` 完整智能驾驶舱（带演示模式入口）
-- `/planner` 参数规划（仍为占位，等待 Phase 2 余下）
+- `/planner` **完整 Demo 工作台**（Desktop 三栏 + Mobile 步骤式 + 3 预设 + 3 图表 + Timeline）
 - `/agents` Agent 工作台（基础版）
 - `/workflow` Workflow 执行视图（静态列表）
 - `/knowledge` 知识库（占位 + 4 份脱敏片段）
@@ -47,24 +62,23 @@
 ## 当前技术状态
 
 - 包管理器：npm
-- 数据库：尚未接入（Phase 2/4 引入）
-- DeepSeek：尚未接入（Phase 3）
-- Agent Runtime：尚未实现（Phase 3）
-- Demo 数据：静态常量 + 集中 loader
-- Motion / ECharts / Zustand：已引入
-- TanStack Query / React Flow / Zod：TanStack Query 与 React Flow 暂未使用；Zod 已装但本会话暂未启用
+- 数据库：尚未接入；Session 3 提供 `PlanningRepository` 接口 + 内存 Demo 实现，可平滑切换到 Drizzle
+- DeepSeek：尚未接入（Phase 3，Session 4）
+- Agent Runtime：尚未实现（Phase 3，Session 4）
+- Demo 数据：静态常量 + 集中 loader + In-Memory Repository
+- Motion / ECharts / Zustand / React Hook Form / Zod：均已启用
+- TanStack Query / React Flow：暂未使用（保留至 Phase 4 / 5）
+- 测试：Vitest 35 条覆盖核心 Planner 纯函数
 
 ## 已知问题
 
 - 移动端底部导航暂隐藏 `Workflow` 一项（Phase 1 决定）
-- 演示模式仅在驾驶舱 PageHeader 暴露入口；其他页面可通过 `usePresentationStore` 接入
 - 浅色主题切换时图表颜色需刷新页面（缓存在 `chart-theme.ts`）
+- `form.watch()` 触发 React Compiler 警告；功能不受影响
 - `PresentationScriptBar` 已实现但未默认挂载；后续 Phase 5 接入预录制 Run 时统一启用
 
 ## 下一建议任务
 
-- Session 3 可直接复用 `loadDashboardSnapshot` / `RevealOnScroll` / `CountUp` / `PresentationShell`，推进：
-  1. 参数表单 + Zod Schema；
-  2. 多方案对比中心；
-  3. `PresentationScriptBar` 接入驾驶舱 / 方案对比页；
-  4. 图表主题缓存随 `data-theme` 失效。
+- Session 4：DeepSeek Provider Adapter + Agent Runtime；按 `session-3.md` §4 替换 Planner 阶段函数
+- Session 4+：`PresentationScriptBar` 接入驾驶舱 / 方案对比页
+- Session 5：数据库 / 多用户隔离 / Workflow Engine 串联 Agent Runtime

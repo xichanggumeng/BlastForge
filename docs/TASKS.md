@@ -40,12 +40,20 @@
 
 ### 待 Phase 2 余下 / Phase 3
 
-- [ ] 工程条件 Zod Schema
-- [ ] 参数录入表单（React Hook Form + Zod）
-- [ ] 自然语言补充输入
-- [ ] 参数预测与多方案结果视图
-- [ ] 方案对比图表（雷达 / 柱状 / 敏感性）
-- [ ] 参数敏感性热力图
+- [x] 工程条件 Zod Schema（`src/modules/parameter-planning/domain/contracts.ts`）
+- [x] 参数录入表单（React Hook Form + Zod，12 字段 + 草稿自动保存）
+- [x] 自然语言补充输入（最长 800 字符）
+- [x] 参数预测与多方案结果视图（推荐 / 备选 / 风险）
+- [x] 方案对比图表（雷达 / 柱状 / 敏感性）
+- [x] 参数敏感性热力图
+- [x] 确定性 Demo Planner 纯函数 + Vitest 35 条覆盖
+- [x] PlanningRepository 接口 + In-Memory Demo 实现 + Drizzle Schema 蓝图
+- [x] Desktop 三栏 / Mobile 步骤式工作台
+- [x] 高风险场景自动 blocked + 补充信息提示
+- [x] Timeline 6 步执行体验 + 取消 / 重置
+- [x] URL 同步（`?preset=`、`?scheme=`、`?chart=`）
+- [x] 状态机 Hook（`usePlanningExecution`）
+- [x] Zustand 分片（`useSelectionStore` / `usePlannerUIStore`）
 
 ## Phase 3：Agent Runtime
 
