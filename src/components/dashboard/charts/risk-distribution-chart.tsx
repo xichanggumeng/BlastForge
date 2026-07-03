@@ -8,6 +8,7 @@ import {
   TitleComponent,
   TooltipComponent,
   LegendComponent,
+  GraphicComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsOption } from "echarts";
@@ -16,7 +17,14 @@ import { getChartTheme, tooltip } from "@/lib/chart-theme";
 import { cn } from "@/lib/cn";
 import type { RiskDistributionBucket, RiskDistributionDatum } from "./__types";
 
-echarts.use([PieChart, TitleComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
+echarts.use([
+  PieChart,
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GraphicComponent,
+  CanvasRenderer,
+]);
 
 export type { RiskDistributionBucket, RiskDistributionDatum };
 export type RiskBucket = RiskDistributionBucket;
