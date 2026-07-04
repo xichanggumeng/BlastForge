@@ -97,6 +97,18 @@
   - [x] 新增 2 条测试：风险分级 markdown 表渲染为 `<table class="md-table">`；封面页已删除
   - [x] 现有 chart 渲染测试增加 SVG 块透传断言（polygon / line / bar-row 不被 `<p>` 包裹）
   - [x] 18 文件 / **143** 测试全过；lint / typecheck / build 全部通过
+- [x] **服务器端 puppeteer 启用 — puppeteer-core + 部署打包脚本 + 离线字体**
+  - [x] pdf-renderer.ts 切换 `puppeteer` → `puppeteer-core`（不带 Chromium 二进制）
+  - [x] 服务端通过 `PUPPETEER_EXECUTABLE_PATH` / `PUPPETEER_CHROME` / `CHROME_PATH` / `GOOGLE_CHROME_BIN` 指明浏览器二进制
+  - [x] 错误信息分级：缺包 → `npm install puppeteer-core`；缺二进制 → 提示设置 `PUPPETEER_EXECUTABLE_PATH` 并打印当前已配置路径
+  - [x] 公开 `resolveLaunchOptions(env)` 纯函数，便于单元测试
+  - [x] package.json：`puppeteer` 移入 `devDependencies`；`puppeteer-core` 进入 `dependencies`
+  - [x] `.npmrc`：`PUPPETEER_SKIP_DOWNLOAD=true` 避免生产镜像下载 Chromium
+  - [x] `scripts/build-server-deploy.mjs`：打包 `.next` + `public` + 运行时 npm 包 + 写 `DEPLOY.md`
+  - [x] 新增 `npm run deploy:package` 脚本
+  - [x] `src/app/layout.tsx` 从 `next/font/google` 切到 `geist` 包（离线字体，绕过 Next 16.2 Turbopack HTTP/2 bug）
+  - [x] 新增 6 条 `pdf-renderer.test.ts`：覆盖 4 种环境变量别名 + 空字符串 + 默认 args
+  - [x] 18 文件 / **149** 测试全过；lint / typecheck / build 全部通过
 - [x] **Workflow 页面 Phase 3 三项可视化能力落地**
   - [x] `useWorkflowStream` Hook（原生 `fetch + ReadableStream` SSE；解析 `meta`/`workflow.event`/`workflow.summary`/`workflow.failed` 四种帧）
   - [x] `applyEventsToSteps` 纯函数：把 `step.started` / `step.completed` / `review.blocked` / `workflow.completed|failed|cancelled` 增量映射到节点状态
@@ -223,6 +235,18 @@
   - [x] 新增 2 条测试：风险分级 markdown 表渲染为 `<table class="md-table">`；封面页已删除
   - [x] 现有 chart 渲染测试增加 SVG 块透传断言（polygon / line / bar-row 不被 `<p>` 包裹）
   - [x] 18 文件 / **143** 测试全过；lint / typecheck / build 全部通过
+- [x] **服务器端 puppeteer 启用 — puppeteer-core + 部署打包脚本 + 离线字体**
+  - [x] pdf-renderer.ts 切换 `puppeteer` → `puppeteer-core`（不带 Chromium 二进制）
+  - [x] 服务端通过 `PUPPETEER_EXECUTABLE_PATH` / `PUPPETEER_CHROME` / `CHROME_PATH` / `GOOGLE_CHROME_BIN` 指明浏览器二进制
+  - [x] 错误信息分级：缺包 → `npm install puppeteer-core`；缺二进制 → 提示设置 `PUPPETEER_EXECUTABLE_PATH` 并打印当前已配置路径
+  - [x] 公开 `resolveLaunchOptions(env)` 纯函数，便于单元测试
+  - [x] package.json：`puppeteer` 移入 `devDependencies`；`puppeteer-core` 进入 `dependencies`
+  - [x] `.npmrc`：`PUPPETEER_SKIP_DOWNLOAD=true` 避免生产镜像下载 Chromium
+  - [x] `scripts/build-server-deploy.mjs`：打包 `.next` + `public` + 运行时 npm 包 + 写 `DEPLOY.md`
+  - [x] 新增 `npm run deploy:package` 脚本
+  - [x] `src/app/layout.tsx` 从 `next/font/google` 切到 `geist` 包（离线字体，绕过 Next 16.2 Turbopack HTTP/2 bug）
+  - [x] 新增 6 条 `pdf-renderer.test.ts`：覆盖 4 种环境变量别名 + 空字符串 + 默认 args
+  - [x] 18 文件 / **149** 测试全过；lint / typecheck / build 全部通过
 
 ### 文档
 

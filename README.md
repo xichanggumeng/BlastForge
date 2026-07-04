@@ -94,6 +94,9 @@ npm run build     # Next.js 生产构建
 | `DEEPSEEK_BASE_URL`   | DeepSeek 兼容端点 | `https://api.deepseek.com/v1` |
 | `DEEPSEEK_MODEL`      | 主模型 | `deepseek-v4-pro` |
 | `AI_REQUEST_TIMEOUT_MS` | 单次 AI 请求超时 | `15000` |
+| `PUPPETEER_EXECUTABLE_PATH` | PDF 渲染所需浏览器二进制（推荐运维配置） | 未配置 → 报错时提示 |
+| `PUPPETEER_CHROME` / `CHROME_PATH` / `GOOGLE_CHROME_BIN` | 浏览器二进制别名（备用） | 未配置 |
+| `PUPPETEER_SKIP_DOWNLOAD` | 跳过 puppeteer postinstall 下载 Chromium | `.npmrc` 默认 `true` |
 
 **安全约束**：
 
@@ -218,6 +221,50 @@ docs/
 - `PresentationScriptBar` 默认未自动播放；演示者手动触发，避免「假演示」。
 - 浅色主题切换时图表颜色需刷新页面（缓存在 `chart-theme.ts`）。
 - 浏览器自动化 E2E 暂未接入 Playwright；后续可扩展。
+
+---
+
+## 服务器部署（含 PDF 渲染）
+
+服务器端需要：
+
+1. **Node.js >= 20** + **npm / pnpm**。
+2. **系统浏览器**（任一）：
+   - Debian / Ubuntu：`apt-get install -y chromium`（或 `google-chrome-stable`）
+   - RHEL / CentOS：`yum install -y chromium`
+   - macOS / Windows：直接装 Chrome / Edge 任意一个
+3. **字体**（中文显示）：`apt-get install -y fonts-noto-cjk`（Linux 必装）
+
+打包 + 上线步骤：
+
+```bash
+# 1. 本机构建产物 + 运行时 npm 包（puppeteer-core 等）
+npm run build
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium npm run deploy:package
+# 生成 .deploy/ 目录，包含 .next + public + scripts + node_modules + DEPLOY.md
+
+# 2. rsync 到服务器
+rsync -avz --delete .deploy/ user@server:/opt/blastforge/
+
+# 3. 服务器：可选再装一次浏览器（如果服务器是空容器）
+ssh user@server "apt-get install -y chromium fonts-noto-cjk"
+
+# 4. 服务器：启动
+ssh user@server "cd /opt/blastforge && \
+  export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium && \
+  npm run start"
+
+# 5. 验证 PDF
+curl 'http://server:3000/api/reports?id=<report-id>&format=pdf' -o report.pdf
+```
+
+**为什么不直接传 `.next + public + package.json`？**  
+Next.js 构建产物会动态 `await import("puppeteer-core")`（PDF 渲染），缺少 `node_modules` 时会立即报「未找到 puppeteer-core」。`deploy:package` 脚本会一并打包 `puppeteer-core` 及其间接依赖（`chromium-bidi` / `devtools-protocol` / `@puppeteer/browsers` 等），但**不会**打包 Chromium 二进制（避免 200MB 镜像膨胀），由服务器环境提供。
+
+**puppeteer vs puppeteer-core**  
+`puppeteer` 含 Chromium 二进制（约 200MB），每次安装都自动下载；`puppeteer-core` 只包含 DevTools 协议客户端，由运维提供浏览器二进制。后者是部署的标配，体积小、可复用系统 Chrome / Edge。
+
+更多排错细节见 `docs/STATUS.md` 与 `DEPLOY.md`（`deploy:package` 自动生成）。
 
 ---
 

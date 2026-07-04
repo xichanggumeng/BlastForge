@@ -19,6 +19,7 @@ import {
   __setBrowserFactoryForTests,
   disposePdfRenderer,
   renderReportPdf,
+  resolveLaunchOptions,
   type BrowserLike,
 } from "./pdf-renderer";
 
@@ -112,9 +113,17 @@ function makePage(pdfBytes: Uint8Array, fail = false): FakePage {
 describe("renderReportPdf", () => {
   beforeEach(async () => {
     await disposePdfRenderer();
+    delete process.env.PUPPETEER_EXECUTABLE_PATH;
+    delete process.env.PUPPETEER_CHROME;
+    delete process.env.CHROME_PATH;
+    delete process.env.GOOGLE_CHROME_BIN;
   });
   afterEach(async () => {
     await disposePdfRenderer();
+    delete process.env.PUPPETEER_EXECUTABLE_PATH;
+    delete process.env.PUPPETEER_CHROME;
+    delete process.env.CHROME_PATH;
+    delete process.env.GOOGLE_CHROME_BIN;
   });
 
   it("调用 exportHTML + setContent + pdf，并以 Buffer 返回", async () => {
@@ -166,5 +175,46 @@ describe("renderReportPdf", () => {
     expect(r2.length).toBeGreaterThan(0);
     // 仅一次 newPage 创建：表明 browser 复用
     expect(newPageSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("resolveLaunchOptions", () => {
+  it("未配置任何环境变量时，返回 headless + args，并标记 source=default", () => {
+    const opts = resolveLaunchOptions({});
+    expect(opts.executablePath).toBeUndefined();
+    expect(opts.headless).toBe(true);
+    expect(opts.args).toContain("--no-sandbox");
+    expect(opts.diagnostics).toEqual({ source: "default", envName: "PUPPETEER_EXECUTABLE_PATH" });
+  });
+
+  it("PUPPETEER_EXECUTABLE_PATH 优先", () => {
+    const opts = resolveLaunchOptions({
+      PUPPETEER_EXECUTABLE_PATH: "/a/chromium",
+      GOOGLE_CHROME_BIN: "/b/chrome",
+      CHROME_PATH: "/c/chrome",
+    });
+    expect(opts.executablePath).toBe("/a/chromium");
+    expect(opts.diagnostics.source).toBe("env");
+  });
+
+  it("支持 PUPPETEER_CHROME", () => {
+    const opts = resolveLaunchOptions({ PUPPETEER_CHROME: "/x/chrome" });
+    expect(opts.executablePath).toBe("/x/chrome");
+  });
+
+  it("支持 CHROME_PATH", () => {
+    const opts = resolveLaunchOptions({ CHROME_PATH: "/y/chrome" });
+    expect(opts.executablePath).toBe("/y/chrome");
+  });
+
+  it("支持 GOOGLE_CHROME_BIN", () => {
+    const opts = resolveLaunchOptions({ GOOGLE_CHROME_BIN: "/z/chrome" });
+    expect(opts.executablePath).toBe("/z/chrome");
+  });
+
+  it("空字符串视为未配置", () => {
+    const opts = resolveLaunchOptions({ PUPPETEER_EXECUTABLE_PATH: "   " });
+    expect(opts.executablePath).toBeUndefined();
+    expect(opts.diagnostics.source).toBe("default");
   });
 });

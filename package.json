@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "export:code": "node scripts/export-code-docs.mjs",
-    "export:pdf": "node scripts/export-md-to-pdf.mjs"
+    "export:pdf": "node scripts/export-md-to-pdf.mjs",
+    "deploy:package": "node scripts/build-server-deploy.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -21,11 +22,12 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "echarts": "^6.1.0",
+    "geist": "^1.7.2",
     "jsdom": "^28.1.0",
     "lucide-react": "^1.23.0",
     "motion": "^12.42.2",
     "next": "16.2.10",
-    "puppeteer": "^24.4.0",
+    "puppeteer-core": "^24.4.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.80.0",
@@ -43,6 +45,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "puppeteer": "^24.4.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

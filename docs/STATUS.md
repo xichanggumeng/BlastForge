@@ -1,8 +1,51 @@
 # 当前开发状态
 
-更新时间：2026-07-04（Phase 5 收官 + Workflow 页面 Phase 3 可视化能力落地 — Vitest 136/136；lint / typecheck / build 全部通过）
+更新时间：2026-07-04（puppeteer-core 切换 + 离线 Geist 字体 + 部署打包脚本 — Vitest 149/149；lint / typecheck / build 全部通过）
 
 ## 已完成
+
+### 2026-07-04 追加：服务器端启用 puppeteer —— 切换 puppeteer-core + 部署打包脚本 + 字体离线修复
+
+- **pdf-renderer.ts 重写为 puppeteer-core**：
+  - 依赖从 `puppeteer`（含 Chromium 二进制，约 200MB）→ `puppeteer-core`（仅 API 客户端）。
+  - 服务端通过 `PUPPETEER_EXECUTABLE_PATH` 指明系统已有的 chromium / chrome / edge 二进制；亦支持 `PUPPETEER_CHROME` / `CHROME_PATH` / `GOOGLE_CHROME_BIN` 等常见别名。
+  - 错误信息分级：缺包时提示 `npm install puppeteer-core`；缺二进制时提示设置 `PUPPETEER_EXECUTABLE_PATH` 并打印当前已配置路径。
+  - 公开 `resolveLaunchOptions(env)` 纯函数，便于单元测试覆盖每条环境变量分支。
+- **package.json 调整**：
+  - `puppeteer` 移入 `devDependencies`（保留 `npm run export:pdf` 等开发工具使用）。
+  - `puppeteer-core` 进入 `dependencies`。
+  - 增加 `npm run deploy:package`（`node scripts/build-server-deploy.mjs`）。
+- **新增 `.npmrc`**：服务端 / CI / 生产构建默认 `PUPPETEER_SKIP_DOWNLOAD=true`，避免 postinstall 下载 Chromium 拖垮镜像构建。
+- **新增 `scripts/build-server-deploy.mjs`**：把 `.next` + `public` + `package.json` + `scripts/` + 运行时 npm 包（puppeteer-core 及其间接依赖）打包成 `.deploy/`，并写出 `DEPLOY.md` 给出 `PUPPETEER_EXECUTABLE_PATH` 配置与排错指南。
+- **新增 `pdf-renderer.test.ts` 6 条测试**：
+  - `resolveLaunchOptions` 在空 / 各环境变量分支下的行为；
+  - 解析 `PUPPETEER_EXECUTABLE_PATH` / `PUPPETEER_CHROME` / `CHROME_PATH` / `GOOGLE_CHROME_BIN` 的优先级；
+  - 空字符串视为未配置；
+  - 默认 args 包含 `--no-sandbox` 等。
+- **修复 Next.js 16.2 Turbopack 离线构建失败**：
+  - 现象：`Failed to fetch Geist from Google Fonts`；该问题与 puppeteer 无关，但在沙盒 / CI / 断网环境下阻断 build。
+  - 修复：`src/app/layout.tsx` 从 `next/font/google` 切换到 `geist` npm 包（本地打包字体，零网络请求）。
+- 测试：18 文件 / **149** 测试全过（原 143 + 新 6）；lint / typecheck / build 全部通过。
+
+#### 服务器部署 puppeteer 启用步骤
+
+1. **本机构建**（一次性）：
+   ```bash
+   PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium npm run deploy:package
+   ```
+   把 `.deploy/` 整目录 rsync / scp 到服务器。
+2. **服务器装浏览器**：任选其一
+   - Debian / Ubuntu：`apt-get install -y chromium`（或 `google-chrome-stable`）；
+   - RHEL / CentOS：`yum install -y chromium`；
+   - macOS / Windows：直接装 Chrome / Edge。
+3. **服务器启动**：
+   ```bash
+   cd /your/app/.deploy
+   pnpm install --prod --ignore-scripts   # 或 npm install --omit=dev --ignore-scripts
+   export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+   npm run start                           # 或 node node_modules/next/dist/bin/next start
+   ```
+4. **验证**：访问 `GET /api/reports?id=<id>&format=pdf` 应返回 `application/pdf`。失败时接口返回 502 + 明确错误码 + 提示运维配置哪个环境变量。
 
 ### 2026-07-04 追加：报告「未找到 Run」修复 + 可下载 PDF 报告
 
