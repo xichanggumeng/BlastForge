@@ -221,8 +221,36 @@ docs/
 
 ---
 
-## License
+## 授权与协议
 
-当前项目授权方式待定。
+本项目基于 **Creative Commons Attribution–NonCommercial 4.0 International (CC BY-NC 4.0)** 协议发布。
 
-在正式确定开源或商业授权方式前，请勿将项目代码、知识库资料和 Demo 数据用于未经授权的商业用途。
+**你可以自由地：**
+
+- **共享** —— 在任何媒介以任何形式复制、发行本作品。
+- **改编** —— 对本作品进行修改、转换，并可用于自己的项目 / 论文 / 课设 / Demo / 二次开发（修改后的成果可直接使用，无需额外获得授权）。
+- **用于任何非商业目的**，包括学习、研究、内部演示、课设 / 毕设、技术评估、政府或非营利机构内部使用等。
+
+**唯一要求：**
+
+- **署名（Attribution）** —— 你必须在使用、转载、修改 / 衍生作品、或分发时显著标明原作者及来源链接：
+
+  > 爆擎 BlastForge © 2026 xichanggumeng
+  > 来源：<https://github.com/xichanggumeng/BlastForge>
+
+  说明：原作者保留对本项目的署名权，即使你对代码进行了修改或扩展。署名方式可以是文档头部「基于 BlastForge」「Fork 自 xichanggumeng/BlastForge」之类的明确说明，不限制具体排版。
+
+**限制条件：**
+
+- **禁止商业使用（NonCommercial）** —— 未经作者事先书面许可，不得将本项目（包括但不限于源码、知识库资料、报告模板、Demo 数据、品牌 Logo「爆擎 / BlastForge」与封面）用于任何以盈利为目的的商业活动，包括但不限于：商业产品 / SaaS / 私有化部署售卖、付费咨询 / 培训 / 二次交付、有偿投标 / 投标技术方案、客户委托交付等。
+- 如需授权商业使用，请联系作者：[xichanggumeng@qq.com](mailto:xichanggumeng@qq.com)，另行签署商业授权协议。
+
+**责任边界：**
+
+- 本项目是面向**模拟商业会议**的高完成度 Demo，仅用于技术展示、学术研究与教学用途，**不构成任何形式的爆破工程设计、施工建议或行业规范**。
+- 使用、修改或衍生本项目所产生的任何后果，由使用者自行承担。
+- 项目中涉及的第三方依赖（如 Next.js、React、ECharts、Puppeteer、DeepSeek 等）仍遵循各自的原始协议，本声明不影响它们的授权条款。
+
+> 协议全文：<https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans>
+
+
